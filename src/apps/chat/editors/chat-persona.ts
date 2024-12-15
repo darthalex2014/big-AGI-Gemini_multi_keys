@@ -1,4 +1,4 @@
-import { AixChatGenerateContent_DMessage, aixChatGenerateContent_DMessage_FromHistory } from '~/modules/aix/client/aix.client';
+import { AixChatGenerateContent_DMessage, aixChatGenerateContent_DMessage_FromConversation } from '~/modules/aix/client/aix.client';
 import { autoChatFollowUps } from '~/modules/aifn/auto-chat-follow-ups/autoChatFollowUps';
 import { autoConversationTitle } from '~/modules/aifn/autotitle/autoTitle';
 
@@ -23,6 +23,19 @@ export interface PersonaProcessorInterface {
 }
 
 
+export function splitSystemMessageFromHistory(chatHistory: Readonly<DMessage[]>): {
+  chatSystemInstruction: DMessage | null,
+  chatHistory: Readonly<DMessage[]>,
+} {
+  const chatSystemInstruction = chatHistory[0].role === 'system' ? chatHistory[0] : null;
+  return {
+    chatSystemInstruction,
+    chatHistory: (chatSystemInstruction ? chatHistory.slice(1) : chatHistory),
+    // .map(_m => _m.role === 'system' ? { ..._m, role: 'user' as const } : _m) // cast system chat messages to the user role
+  };
+}
+
+
 /**
  * The main "chat" function.
  * @returns `true` if the operation was successful, `false` otherwise.
@@ -34,14 +47,19 @@ export async function runPersonaOnConversationHead(
 
   const cHandler = ConversationsManager.getHandler(conversationId);
 
-  const history = cHandler.historyViewHead('runPersonaOnConversationHead') as Readonly<DMessage[]>;
+  const _history = cHandler.historyViewHead('runPersonaOnConversationHead') as Readonly<DMessage[]>;
+  if (_history.length === 0)
+    return false;
+
+  // split pre dynamic-personas
+  let { chatSystemInstruction, chatHistory } = splitSystemMessageFromHistory(_history);
 
   // assistant response placeholder
   const isNotifyEnabled = getIsNotificationEnabledForModel(assistantLlmId);
   const { assistantMessageId } = cHandler.messageAppendAssistantPlaceholder(
     CHATGENERATE_RESPONSE_PLACEHOLDER,
     {
-      purposeId: history[0].purposeId,
+      purposeId: chatSystemInstruction?.purposeId,
       generator: { mgt: 'named', name: assistantLlmId },
       ...(isNotifyEnabled ? { userFlags: [MESSAGE_FLAG_NOTIFY_COMPLETE] } : {}),
     },
@@ -60,9 +78,10 @@ export async function runPersonaOnConversationHead(
   cHandler.setAbortController(abortController, 'chat-persona');
 
   // stream the assistant's messages directly to the state store
-  const messageStatus = await aixChatGenerateContent_DMessage_FromHistory(
+  const messageStatus = await aixChatGenerateContent_DMessage_FromConversation(
     assistantLlmId,
-    history,
+    chatSystemInstruction,
+    chatHistory,
     'conversation',
     conversationId,
     { abortSignal: abortController.signal, throttleParallelThreads: parallelViewCount },
