@@ -79,6 +79,17 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
     user: undefined,
   };
 
+  // Top-P instead of temperature
+  if (model.topP !== undefined) {
+    delete payload.temperature;
+    payload.top_p = model.topP;
+  }
+
+  // [OpenAI] Vendor-specific reasoning effort, for o1 models only as of 2024-12-24
+  if (model.vndOaiReasoningEffort) {
+    payload.reasoning_effort = model.vndOaiReasoningEffort;
+  }
+
   if (hotFixOpenAIo1Family)
     payload = _fixRequestForOpenAIO1_maxCompletionTokens(payload);
 
