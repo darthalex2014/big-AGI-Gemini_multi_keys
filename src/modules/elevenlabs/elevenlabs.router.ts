@@ -224,7 +224,7 @@ export function elevenlabsAccess(elevenKey: string | undefined, apiPath: string)
     headers: {
       'Accept': 'audio/mpeg',
       'Content-Type': 'application/json',
-      'xi-api-key': elevenKey,
+      'xi-api-key': selectedKey,
     },
     url: host + apiPath,
   };
@@ -292,4 +292,5 @@ export namespace ElevenlabsWire {
       similarity_boost: number;
     };
   }
+}
 }
