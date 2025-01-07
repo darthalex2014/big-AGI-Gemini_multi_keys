@@ -1,4 +1,7 @@
--> Ray[] (single scatter thread)
+import type { SxProps } from '@mui/joy/styles/types';
+import { OVERLAY_BUTTON_ZINDEX } from '~/modules/blocks/OverlayButton';
+// BEAM recap - Nomenclature:
+//  - Beam (public name) = Scatter (technology process) -> Ray[] (single scatter thread)
 //  - Merge (public name) = Gather (technology process) -> Fusion[] (single gather thread)
 
 // configuration [BEAM Common]
