@@ -50,12 +50,6 @@ export const ModelVendorGemini: IModelVendor<DGeminiServiceSettings, GeminiAcces
     geminiHost: partialSetup?.geminiHost || '',
     minSafetyLevel: partialSetup?.minSafetyLevel || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
   }),
-  getTransportAccess: (partialSetup): GeminiAccessSchema => ({
-    dialect: 'gemini',
-    geminiKey: partialSetup?.geminiKey || '',
-    geminiHost: partialSetup?.geminiHost || '',
-    minSafetyLevel: partialSetup?.minSafetyLevel || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-  }),
 
   // List Models
   rpcUpdateModelsOrThrow: async (access) => await apiAsync.llmGemini.listModels.query({ access }),
