@@ -191,9 +191,27 @@ export const elevenlabsRouter = createTRPCRouter({
  */
 export function elevenlabsAccess(elevenKey: string | undefined, apiPath: string): { headers: HeadersInit; url: string } {
   // API key
-  elevenKey = (elevenKey || env.ELEVENLABS_API_KEY || '').trim();
-  if (!elevenKey)
+  let elevenKeys: string[];
+  const envKey = (env.ELEVENLABS_API_KEY || '').trim();
+
+  if (elevenKey) {
+    if (elevenKey.includes(',')) {
+      elevenKeys = elevenKey.split(',').map(key => key.trim()).filter(key => key.length > 0);
+    } else {
+      elevenKeys = [elevenKey];
+    }
+  } else if (envKey.includes(',')) {
+    elevenKeys = envKey.split(',').map(key => key.trim()).filter(key => key.length > 0);
+  } else {
+    elevenKeys = [envKey];
+  }
+
+  if (elevenKeys.length === 0 || (elevenKeys.length === 1 && elevenKeys[0] === '')) {
     throw new Error('Missing ElevenLabs API key.');
+  }
+
+  // Randomly select a key
+  const selectedKey = elevenKeys[Math.floor(Math.random() * elevenKeys.length)];
 
   // API host
   let host = (env.ELEVENLABS_API_HOST || 'api.elevenlabs.io').trim();
