@@ -20,7 +20,6 @@ import { useServiceSetup } from '../useServiceSetup';
 
 import { ModelVendorGemini } from './gemini.vendor';
 
-
 const GEMINI_API_KEY_LINK = 'https://aistudio.google.com/app/apikey';
 
 const SAFETY_OPTIONS: { value: GeminiWire_Safety.HarmBlockThreshold, label: string }[] = [
@@ -30,7 +29,6 @@ const SAFETY_OPTIONS: { value: GeminiWire_Safety.HarmBlockThreshold, label: stri
   { value: 'BLOCK_ONLY_HIGH', label: 'Only high' },
   { value: 'BLOCK_NONE', label: 'None' },
 ];
-
 
 export function GeminiServiceSetup(props: { serviceId: DModelsServiceId }) {
 
@@ -72,6 +70,7 @@ export function GeminiServiceSetup(props: { serviceId: DModelsServiceId }) {
                       description='Threshold' />
       <Select
         variant='outlined'
+         value={minSafetyLevel} onChange={(_event, value) => value && updateSettings({ minSafetyLevel: value as GeminiWire_Safety.HarmBlockThreshold })}
         value={minSafetyLevel} onChange={(_event, value) => value && updateSettings({ minSafetyLevel: value })}
         startDecorator={<HealthAndSafetyIcon sx={{ display: { xs: 'none', sm: 'inherit' } }} />}
         // indicator={<KeyboardArrowDownIcon />}

@@ -13,13 +13,12 @@ import { fixupHost } from '~/common/util/urlUtils';
 import { ListModelsResponse_schema } from '../llm.server.types';
 import { geminiFilterModels, geminiModelToModelDescription, geminiSortModels } from './gemini.models';
 
-
 // Default hosts
 const DEFAULT_GEMINI_HOST = 'https://generativelanguage.googleapis.com';
 
-
 // Mappers
 
+export function geminiAccess(access: GeminiAccessSchema, modelRefId: string | null, apiPath: string): { headers: HeadersInit, url: string, safetySettings: GeminiWire_Safety.SafetySetting[] } {
 export function geminiAccess(access: GeminiAccessSchema, modelRefId: string | null, apiPath: string): { headers: HeadersInit, url: string } {
 
   const geminiKey = access.geminiKey || env.GEMINI_API_KEY || '';
@@ -39,20 +38,50 @@ export function geminiAccess(access: GeminiAccessSchema, modelRefId: string | nu
       'x-goog-api-key': geminiKey,
     },
     url: geminiHost + apiPath,
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: access.minSafetyLevel,
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: access.minSafetyLevel,
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: access.minSafetyLevel,
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: access.minSafetyLevel,
+      },
+    ],
+  };
+  return {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-client': `big-agi/${packageJson['version'] || '1.0.0'}`,
+      'x-goog-api-key': geminiKey,
+    },
+    url: geminiHost + apiPath,
   };
 }
 
-
+async function geminiGET<TOut extends object>(access: GeminiAccessSchema, modelRefId: string | null, apiPath: string): Promise<TOut> {
+  const { headers, url, safetySettings } = geminiAccess(access, modelRefId, apiPath);
+  return await fetchJsonOrTRPCThrow<TOut>({ url, headers, body: { safetySettings }, method: 'POST', name: 'Gemini' });
 async function geminiGET<TOut extends object>(access: GeminiAccessSchema, modelRefId: string | null, apiPath: string /*, signal?: AbortSignal*/): Promise<TOut> {
   const { headers, url } = geminiAccess(access, modelRefId, apiPath);
   return await fetchJsonOrTRPCThrow<TOut>({ url, headers, name: 'Gemini' });
 }
 
+async function geminiPOST<TOut extends object, TPostBody extends object>(access: GeminiAccessSchema, modelRefId: string | null, body: TPostBody, apiPath: string): Promise<TOut> {
+  const { headers, url, safetySettings } = geminiAccess(access, modelRefId, apiPath);
+  return await fetchJsonOrTRPCThrow<TOut, TPostBody>({ url, method: 'POST', headers, body: { ...body, safetySettings }, name: 'Gemini' });
 async function geminiPOST<TOut extends object, TPostBody extends object>(access: GeminiAccessSchema, modelRefId: string | null, body: TPostBody, apiPath: string /*, signal?: AbortSignal*/): Promise<TOut> {
   const { headers, url } = geminiAccess(access, modelRefId, apiPath);
   return await fetchJsonOrTRPCThrow<TOut, TPostBody>({ url, method: 'POST', headers, body, name: 'Gemini' });
 }
-
 
 // Input/Output Schemas
 
@@ -64,11 +93,9 @@ export const geminiAccessSchema = z.object({
 });
 export type GeminiAccessSchema = z.infer<typeof geminiAccessSchema>;
 
-
 const accessOnlySchema = z.object({
   access: geminiAccessSchema,
 });
-
 
 /**
  * See https://github.com/google/generative-ai-js/tree/main/packages/main/src for

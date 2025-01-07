@@ -7,7 +7,6 @@ import type { IModelVendor } from '../IModelVendor';
 
 import { GeminiServiceSetup } from './GeminiServiceSetup';
 
-
 interface DGeminiServiceSettings {
   geminiKey: string;
   geminiHost: string;
@@ -23,7 +22,6 @@ interface LLMOptionsGemini {
   topP: number;             // 0...1 The maximum cumulative probability of tokens to consider when sampling (optional)
   topK: number;             // 1...100 The maximum number of tokens to consider when sampling (optional)
 }
-
 
 export const ModelVendorGemini: IModelVendor<DGeminiServiceSettings, GeminiAccessSchema> = {
   id: 'googleai',
@@ -46,6 +44,12 @@ export const ModelVendorGemini: IModelVendor<DGeminiServiceSettings, GeminiAcces
   validateSetup: (setup) => {
     return setup.geminiKey?.length > 0;
   },
+  getTransportAccess: (partialSetup): GeminiAccessSchema => ({
+    dialect: 'gemini',
+    geminiKey: partialSetup?.geminiKey || '',
+    geminiHost: partialSetup?.geminiHost || '',
+    minSafetyLevel: partialSetup?.minSafetyLevel || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
+  }),
   getTransportAccess: (partialSetup): GeminiAccessSchema => ({
     dialect: 'gemini',
     geminiKey: partialSetup?.geminiKey || '',
