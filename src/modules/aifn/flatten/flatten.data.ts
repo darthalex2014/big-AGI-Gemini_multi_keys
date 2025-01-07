@@ -2,7 +2,16 @@ export type FlattenStyleType = 'brief' | 'deep' | 'exploration' | 'action' | 'al
 
 interface FlattenProfile {
   type: FlattenStyleType;
-@@ -17,31 +17,47 @@ export const FLATTEN_PROFILES: FlattenProfile[] = [
+  name: string;
+  description: string;
+  emoji: string;
+  systemPrompt: string;
+  userPrompt: string;
+}
+const systemPromptSuffix = 'Ensure the summary is impersonal and easy to read, write clear and separated paragraphs and use bullet points when possible.';
+export const FLATTEN_PROFILES: FlattenProfile[] = [
+  {
+    type: 'brief',
     name: 'Brief',
     description: 'Concise overview with main points and actions',
     emoji: '⚡',
