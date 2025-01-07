@@ -70,7 +70,6 @@ export function GeminiServiceSetup(props: { serviceId: DModelsServiceId }) {
                       description='Threshold' />
       <Select
         variant='outlined'
-         value={minSafetyLevel} onChange={(_event, value) => value && updateSettings({ minSafetyLevel: value as GeminiWire_Safety.HarmBlockThreshold })}
         value={minSafetyLevel} onChange={(_event, value) => value && updateSettings({ minSafetyLevel: value })}
         startDecorator={<HealthAndSafetyIcon sx={{ display: { xs: 'none', sm: 'inherit' } }} />}
         // indicator={<KeyboardArrowDownIcon />}
@@ -107,4 +106,3 @@ export function GeminiServiceSetup(props: { serviceId: DModelsServiceId }) {
     {isError && <InlineError error={error} />}
 
   </>;
-}
