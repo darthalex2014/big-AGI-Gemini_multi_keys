@@ -1,6 +1,5 @@
 import type { SxProps } from '@mui/joy/styles/types';
 import { OVERLAY_BUTTON_ZINDEX } from '~/modules/blocks/OverlayButton';
-
 // BEAM recap - Nomenclature:
 //  - Beam (public name) = Scatter (technology process) -> Ray[] (single scatter thread)
 //  - Merge (public name) = Gather (technology process) -> Fusion[] (single gather thread)
@@ -14,10 +13,10 @@ export const BEAM_PANE_ZINDEX = OVERLAY_BUTTON_ZINDEX + 1; // on top of the over
 export const SCATTER_COLOR = 'neutral' as const;
 export const SCATTER_DEBUG_STATE = false;
 export const SCATTER_PLACEHOLDER = '🖊️ ...'; // 💫 ..., 🖊️ ...
-export const SCATTER_RAY_DEF = 2;
-export const SCATTER_RAY_MAX = 8;
+export const SCATTER_RAY_DEF = 1;
+export const SCATTER_RAY_MAX = 50;
 export const SCATTER_RAY_MIN = 1;
-export const SCATTER_RAY_PRESETS = [2, 4, 8];
+export const SCATTER_RAY_PRESETS = [2, 4, 8, 10, 20, 30, 40, 50];
 export const SCATTER_RAY_SHOW_DRAG_HANDLE = false;
 
 // configuration [BEAM Gather]
