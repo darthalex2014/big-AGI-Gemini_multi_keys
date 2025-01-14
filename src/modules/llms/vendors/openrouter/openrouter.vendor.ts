@@ -46,14 +46,27 @@ export const ModelVendorOpenRouter: IModelVendor<DOpenRouterServiceSettings, Ope
     oaiHost: 'https://openrouter.ai/api',
     oaiKey: '',
   }),
-  getTransportAccess: (partialSetup): OpenAIAccessSchema => ({
-    dialect: 'openrouter',
-    oaiKey: partialSetup?.oaiKey || '',
-    oaiOrg: '',
-    oaiHost: partialSetup?.oaiHost || '',
-    heliKey: '',
-    moderationCheck: false,
-  }),
+  getTransportAccess: (partialSetup): OpenAIAccessSchema => {
+    let oaiKey = partialSetup?.oaiKey || '';
+
+    // multi-key with random selection
+    if (oaiKey.includes(',')) {
+      const multiKeys = oaiKey
+        .split(',')
+        .map(key => key.trim())
+        .filter(Boolean);
+      oaiKey = multiKeys[Math.floor(Math.random() * multiKeys.length)];
+    }
+
+    return {
+      dialect: 'openrouter',
+      oaiKey: oaiKey,
+      oaiOrg: '',
+      oaiHost: partialSetup?.oaiHost || '',
+      heliKey: '',
+      moderationCheck: false,
+    };
+  },
 
   // there is delay for OpenRouter Free API calls
   rateLimitChatGenerate: async (llm) => {
