@@ -63,6 +63,10 @@ export const ModelVendorOpenRouter: IModelVendor<DOpenRouterServiceSettings, Ope
       oaiKey: oaiKey,
       oaiOrg: '',
       oaiHost: partialSetup?.oaiHost || '',
+      // Важно: Заголовок Authorization для OpenRouter
+      getCustomHeaders: () => ({
+        Authorization: `Bearer ${oaiKey}`,
+      }),
       heliKey: '',
       moderationCheck: false,
     };
