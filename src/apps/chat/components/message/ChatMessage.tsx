@@ -1135,6 +1135,621 @@ export function ChatMessage(props: {
     function selectApiKey() {
         if (!translationSettings.apiKey) return null;
         const apiKeys = translationSettings.apiKey.split(',');
+        if (apiKeys.length === 0) return null;
+        const selectedIndex = apiKeyIndex % apiKeys.length;
+        setApiKeyIndex(selectedIndex + 1);
+        return apiKeys[selectedIndex];
+    };
+
+     const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+            const selectedKey = selectApiKey();
+            if (!selectedKey) {
+              alert('No API key set')
+                callback(null);
+              return;
+            }
+           const formattedPrompt = translationSettings.systemPrompt
+                .replace("{sourceLang}", translationSettings.inlineLangSrc)
+                .replace("{targetLang}", translationSettings.inlineLangDst)
+                .replace("{text}", text);
+
+
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+              },
+             body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        threshold: "OFF"
+                    }
+                ]
+             }),
+            })
+            .then(response => response.json())
+              .then(data => {
+                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+                    const translatedText = data.candidates[0].content.parts[0].text;
+                      callback(translatedText);
+                   }
+                   else{
+                       callback(null);
+                   }
+               })
+                .catch(()=> {
+                    callback(null)
+                });
+            }, [translationSettings, selectApiKey]
+        );
+
+    const handleTranslateText = React.useCallback(() => {
+      setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+      translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+            }
+                setTranslationInProgress(false);
+            });
+    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
+
+    const handleOpenTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(true);
+    }, []);
+
+    const handleCloseTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(false);
+    }, []);
+
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
+
+  // Blocks renderer
+
+  const handleBlocksContextMenu = React.useCallback((event: React.MouseEvent) => {
+    handleContextMenu(event.nativeEvent);
+  }, [handleContextMenu]);
+
+  const handleBlocksDoubleClick = React.useCallback((event: React.MouseEvent) => {
+    if ((doubleClickToEdit || event.shiftKey) && props.onMessageFragmentReplace)
+      handleOpsEditToggle(event);
+  }, [doubleClickToEdit, handleOpsEditToggle, props.onMessageFragmentReplace]);
+
+  const handleBlocksMouseUp = React.useCallback((event: React.MouseEvent) => {
+    handleOpenBubble(event.nativeEvent);
+  }, [handleOpenBubble]);
+
+
+  // style
+  const backgroundColor = messageBackground(messageRole, messageHasBeenEdited, false /*isAssistantError && !errorMessage*/);
+
+  const listItemSx: SxProps = React.useMemo(() => ({
+    // vars
+    '--AGI-overlay-start-opacity': uiComplexityMode === 'extra' ? 0.1 : 0,
+
+    // style
+    backgroundColor: backgroundColor,
+    px: { xs: 1, md: themeScalingMap[adjContentScaling]?.chatMessagePadding ?? 2 },
+    py: themeScalingMap[adjContentScaling]?.chatMessagePadding ?? 2,
+    // filter: 'url(#agi-futuristic-glow)',
+
+    // style: omit border if set externally
+    ...(!('borderBottom' in (props.sx || {})) && {
+      borderBottom: '1px solid',
+      borderBottomColor: 'divider',
+    }),
+
+    // style: when starred
+    ...(isUserStarred && {
+      outline: '3px solid',
+      outlineColor: 'primary.solidBg',
+      boxShadow: 'lg',
+      borderRadius: 'lg',
+      zIndex: 1,
+    }),
+
+    // style: when has a user/automatic breakpoint
+    ...(isVndAndCacheUser && {
+      borderInlineStart: `0.125rem solid ${ModelVendorAnthropic.brandColor}`,
+      // borderTopLeftRadius: '0.375rem',
+      // borderBottomLeftRadius: '0.375rem',
+    }),
+    ...(uiComplexityMode === 'extra' && isVndAndCacheAuto && !isVndAndCacheUser && {
+      position: 'relative',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: '0.125rem',
+        background: `repeating-linear-gradient( -45deg, transparent, transparent 2px, ${ModelVendorAnthropic.brandColor} 2px, ${ModelVendorAnthropic.brandColor} 12px ) repeat`,
+      },
+    }),
+    // style: when the user skips the message
+    ...(isUserMessageSkipped && messageSkippedSx),
+
+    // style: when the message is being edited
+    ...(isEditingText && {
+      zIndex: 1, // this is to make the whole message appear on top of Beam Scatter > RayControlsMemo
+    }),
+
+    // for: ENABLE_COPY_MESSAGE_OVERLAY
+    // '&:hover > button': { opacity: 1 },
+
+    // layout
+    display: 'block', // this is Needed, otherwise there will be a horizontal overflow
+
+    ...props.sx,
+  }), [adjContentScaling, backgroundColor, isEditingText, isUserMessageSkipped, isUserStarred, isVndAndCacheAuto, isVndAndCacheUser, props.sx, uiComplexityMode]);
+
+
+  // avatar icon & label & tooltip
+
+  const zenMode = uiComplexityMode === 'minimal';
+
+  const showAvatarIcon = !props.hideAvatar && !zenMode;
+  const messageGeneratorName = messageGenerator?.name;
+  const messageAvatarIcon = React.useMemo(
+    () => !showAvatarIcon ? null : makeMessageAvatarIcon(uiComplexityMode, messageRole, messageGeneratorName, messagePurposeId, !!messagePendingIncomplete, isUserMessageSkipped, isUserNotifyComplete, true),
+    [isUserMessageSkipped, isUserNotifyComplete, messageGeneratorName, messagePendingIncomplete, messagePurposeId, messageRole, showAvatarIcon, uiComplexityMode],
+  );
+
+  const { label: messageAvatarLabel, tooltip: messageAvatarTooltip } = useMessageAvatarLabel(props.message, uiComplexityMode);
+
+
+  return (
+    <Box
+      component='li'
+      role='chat-message'
+      tabIndex={-1 /* for shortcuts navigation */}
+      onMouseUp={(ENABLE_BUBBLE && !fromSystem /*&& !isAssistantError*/) ? handleBlocksMouseUp : undefined}
+      sx={listItemSx}
+      // className={messagePendingIncomplete ? 'agi-border-4' /* CSS Effect while in progress */ : undefined}
+    >
+
+      {/* (Optional) top decorator */}
+      {props.topDecorator}
+
+
+      {/* Message Row: Aside, Fragment[][], Aside2 */}
+      <Box
+        role={undefined /* aside | message | ops */}
+        sx={(fromAssistant && !isEditingText) ? messageBodySx : messageBodyReverseSx}
+      >
+
+        {/* [start-Avatar] Avatar (Persona) */}
+        {!props.hideAvatar && !isEditingText && (
+          <Box sx={zenMode ? messageZenAsideColumnSx : messageAsideColumnSx}>
+
+            {/* Persona Avatar or Menu Button */}
+            <Box
+              onClick={(event) => {
+                // [DEBUG][PROD] shift+click to dump the DMessage
+                event.shiftKey && console.log('message', props.message);
+                handleOpsMenuToggle(event);
+              }}
+              onContextMenu={handleOpsMenuToggle}
+              onMouseEnter={props.isMobile ? undefined : () => setIsHovering(true)}
+              onMouseLeave={props.isMobile ? undefined : () => setIsHovering(false)}
+              sx={personaAvatarOrMenuSx}
+            >
+              {showAvatarIcon && !isHovering && !opsMenuAnchor ? (
+                messageAvatarIcon
+              ) : (
+                <IconButton
+                  size='sm'
+                  variant={opsMenuAnchor ? 'solid' : (zenMode && fromAssistant) ? 'plain' : 'soft'}
+                  color={(fromAssistant || fromSystem) ? 'neutral' : 'primary'}
+                  sx={avatarIconSx}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Assistant (llm/function) name */}
+            {fromAssistant && !zenMode && (
+              <TooltipOutlined asLargePane enableInteractive title={messageAvatarTooltip} placement='bottom-start'>
+                <Typography level='body-xs' sx={messagePendingIncomplete ? messageAvatarLabelAnimatedSx : messageAvatarLabelSx}>
+                  {messageAvatarLabel}
+                </Typography>
+              </TooltipOutlined>
+            )}
+
+          </Box>
+        )}
+
+        {/* [start-Edit] Fragments Edit: Apply */}
+        {isEditingText && (
+          <Box sx={messageAsideColumnSx} className='msg-edit-button'>
+            <Tooltip arrow disableInteractive title='Apply Edits'>
+              <IconButton size='sm' variant='solid' color='warning' onClick={handleEditsApplyClicked}>
+                <CheckRoundedIcon />
+              </IconButton>
+            </Tooltip>
+            <Typography level='body-xs' sx={editButtonWrapSx}>
+              Done
+            </Typography>
+          </Box>
+        )}
+
+
+        {/* V-Fragments: Image Attachments | Content | Doc Attachments */}
+        <Box ref={blocksRendererRef /* restricts the BUBBLE menu to the children of this */} sx={fragmentsListSx}>
+
+          {/* (optional) Message date */}
+          {(props.showBlocksDate === true && !!(messageUpdated || messageCreated)) && (
+            <Typography level='body-sm' sx={{ mx: 1.5, textAlign: fromAssistant ? 'left' : 'right' }}>
+              <TimeAgo date={messageUpdated || messageCreated} />
+            </Typography>
+          )}
+
+          {/* (special case) System modified warning */}
+          {fromSystem && messageHasBeenEdited && (
+            <Typography level='body-sm' color='warning' sx={{ mt: 1, mx: 1.5, textAlign: 'end' }}>
+              modified by user - auto-update disabled
+            </Typography>
+          )}
+
+          {/* In-Reference-To Bubble */}
+          {!!messageMetadata?.inReferenceTo?.length && (
+            <InReferenceToList items={messageMetadata.inReferenceTo} />
+          )}
+
+          {/* Image Attachment Fragments - just for a prettier display on top of the message */}
+          {imageAttachments.length >= 1 && (
+            <ImageAttachmentFragments
+              imageAttachments={imageAttachments}
+              contentScaling={adjContentScaling}
+              messageRole={messageRole}
+              disabled={isEditingText}
+              onFragmentDelete={handleFragmentDelete}
+            />
+          )}
+
+          {/* Content Fragments */}
+          <ContentFragments
+            fragments={contentOrVoidFragments}
+            showEmptyNotice={!messageFragments.length && !messagePendingIncomplete}
+
+            contentScaling={adjContentScaling}
+            uiComplexityMode={uiComplexityMode}
+            fitScreen={props.fitScreen}
+            isMobile={props.isMobile}
+            messageRole={messageRole}
+            optiAllowSubBlocksMemo={!!messagePendingIncomplete}
+            disableMarkdownText={disableMarkdown || fromUser /* User messages are edited as text. Try to have them in plain text. NOTE: This may bite. */}
+            showUnsafeHtmlCode={props.showUnsafeHtmlCode}
+            enhanceCodeBlocks={labsEnhanceCodeBlocks}
+
+            textEditsState={textContentEditState}
+            setEditedText={(!props.onMessageFragmentReplace || messagePendingIncomplete) ? undefined : handleEditSetText}
+            onEditsApply={handleApplyAllEdits}
+            onEditsCancel={handleEditsCancel}
+
+            onFragmentBlank={handleFragmentNew}
+            onFragmentDelete={handleFragmentDelete}
+            onFragmentReplace={handleFragmentReplace}
+            onMessageDelete={props.onMessageDelete ? handleOpsDelete : undefined}
+
+            onContextMenu={(props.onMessageFragmentReplace && ENABLE_CONTEXT_MENU) ? handleBlocksContextMenu : undefined}
+            onDoubleClick={(props.onMessageFragmentReplace /*&& doubleClickToEdit disabled, as we may have shift too */) ? handleBlocksDoubleClick : undefined}
+          />
+
+          {/* Document Fragments */}
+          {nonImageAttachments.length >= 1 && (
+            <DocumentAttachmentFragments
+              attachmentFragments={nonImageAttachments}
+              messageRole={messageRole}
+              contentScaling={adjContentScaling}
+              isMobile={props.isMobile}
+              zenMode={zenMode}
+              allowSelection={!isEditingText}
+              disableMarkdownText={disableMarkdown}
+              onFragmentDelete={handleFragmentDelete}
+              onFragmentReplace={handleFragmentReplace}
+            />
+          )}
+
+          {/* Continue... */}
+          {props.isBottom && messageGenerator?.tokenStopReason === 'out-of-tokens' && !!props.onMessageContinue && (
+            <BlockOpContinue
+              contentScaling={adjContentScaling}
+              messageId={messageId}
+              messageRole={messageRole}
+              onContinue={props.onMessageContinue}
+            />
+          )}
+
+        </Box>
+
+
+        {/* [end-Edit] Fragments Edit: Cancel */}
+        {isEditingText && (
+          <Box sx={messageAsideColumnSx} className='msg-edit-button'>
+            <Tooltip arrow disableInteractive title='Discard Edits'>
+              <IconButton size='sm' variant='solid' onClick={handleEditsCancel}>
+                <CloseRoundedIcon />
+              </IconButton>
+            </Tooltip>
+            <Typography level='body-xs' sx={editButtonWrapSx}>
+              Cancel
+            </Typography>
+          </Box>
+        )}
+
+      </Box>
+
+
+      {/* Overlay copy icon */}
+      {ENABLE_COPY_MESSAGE_OVERLAY && !fromSystem && !isEditingText && (
+        <Tooltip title={messagePendingIncomplete ? null : (fromAssistant ? 'Copy message' : 'Copy input')} variant='solid'>
+          <IconButton
+            variant='outlined' onClick={handleOpsCopy}
+            sx={{
+              position: 'absolute', ...(fromAssistant ? { right: { xs: 12, md: 28 } } : { left: { xs: 12, md: 28 } }), zIndex: 10,
+              opacity: 0, transition: 'opacity 0.16s cubic-bezier(.17,.84,.44,1)',
+            }}>
+            <ContentCopyIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+
+
+      {/* Message Operations Menu (3 dots) */}
+      {!!opsMenuAnchor && (
+        <CloseablePopup
+          menu anchorEl={opsMenuAnchor} onClose={handleCloseOpsMenu}
+          dense
+          minWidth={280}
+          placement={fromAssistant ? 'auto-start' : 'auto-end'}
+        >
+
+          {fromSystem && (
+            <ListItem>
+              <Typography level='body-sm'>
+                System message
+              </Typography>
+            </ListItem>
+          )}
+
+          {/* Edit / Copy */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Edit */}
+            {!!props.onMessageFragmentReplace && (
+              <MenuItem variant='plain' disabled={!!messagePendingIncomplete} onClick={handleOpsEditToggle} sx={{ flex: 1 }}>
+                <ListItemDecorator>{isEditingText ? <CloseRoundedIcon /> : <EditRoundedIcon />}</ListItemDecorator>
+                {isEditingText ? 'Discard' : 'Edit'}
+              </MenuItem>
+            )}
+            {/* Copy */}
+            <MenuItem onClick={handleOpsCopy} sx={{ flex: 1 }}>
+              <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
+              Copy
+            </MenuItem>
+              {/* Starred */}
+            {!!onMessageToggleUserFlag && (
+              <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
+                <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
+                  {isUserStarred
+                    ? <AlternateEmailIcon color='primary' sx={{ fontSize: 'xl' }} />
+                    : <InsertLinkIcon sx={{ rotate: '45deg' }} />
+                  }
+                  {/*{isUserStarred*/}
+                  {/*  ? <StarRoundedIcon color='primary' sx={{ fontSize: 'xl2' }} />*/}
+                  {/*  : <StarOutlineRoundedIcon sx={{ fontSize: 'xl2' }} />*/}
+                  {/*}*/}
+                </Tooltip>
+              </MenuItem>
+            )}
+          </Box>
+
+            {/* Notify Complete */}
+            {messagePendingIncomplete && !!onMessageToggleUserFlag && <ListDivider />}
+            {messagePendingIncomplete && !!onMessageToggleUserFlag && (
+              <MenuItem onClick={handleOpsToggleNotifyComplete}>
+                  <ListItemDecorator>{isUserNotifyComplete ? <NotificationsActiveIcon /> : <NotificationsOutlinedIcon />}</ListItemDecorator>
+                Notify on reply
+              </MenuItem>
+           )}
+
+          {/* Anthropic Breakpoint Toggle */}
+          {!messagePendingIncomplete && <ListDivider />}
+          {!messagePendingIncomplete && !isUserMessageSkipped && !!props.showAntPromptCaching && (
+            <MenuItem onClick={handleOpsToggleAntCacheUser}>
+              <ListItemDecorator><AnthropicIcon sx={isVndAndCacheUser ? antCachePromptOnSx : antCachePromptOffSx} /></ListItemDecorator>
+              {isVndAndCacheUser ? 'Do not cache' : <>Cache <span style={{ opacity: 0.5 }}>up to here</span></>}
+            </MenuItem>
+          )}
+          {!messagePendingIncomplete && !isUserMessageSkipped && !!props.showAntPromptCaching && isVndAndCacheAuto && !isVndAndCacheUser && (
+            <MenuItem disabled>
+              <ListItemDecorator><TextureIcon sx={{ color: ModelVendorAnthropic.brandColor }} /></ListItemDecorator>
+              Auto-Cached <span style={{ opacity: 0.5 }}>for 5 min</span>
+            </MenuItem>
+          )}
+          {/* Aix Skip Message */}
+          {!messagePendingIncomplete && !!props.onMessageToggleUserFlag && (
+            <MenuItem onClick={handleOpsToggleSkipMessage}>
+              <ListItemDecorator>{isUserMessageSkipped ? <VisibilityOffIcon sx={{ color: 'danger.plainColor' }} /> : <VisibilityIcon />}</ListItemDecorator>
+              {isUserMessageSkipped ? 'Unskip' : 'Skip AI processing'}
+            </MenuItem>
+          )}
+
+          {/* Delete / Branch / Truncate */}
+          {!!props.onMessageBranch && <ListDivider />}
+          {!!props.onMessageBranch && (
+            <MenuItem onClick={handleOpsBranch} disabled={fromSystem}>
+              <ListItemDecorator>
+                <ForkRightIcon />
+              </ListItemDecorator>
+              Branch
+              {!props.isBottom && <span style={{ opacity: 0.5 }}>from here</span>}
+            </MenuItem>
+          )}
+            {!!props.onMessageDelete && (
+              <MenuItem onClick={handleOpsDelete} disabled={false /*fromSystem*/}>
+                <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
+                  Delete
+                  <span style={{ opacity: 0.5 }}>message</span>
+              </MenuItem>
+          )}
+          {!!props.onMessageTruncate && (
+            <MenuItem onClick={handleOpsTruncate} disabled={props.isBottom}>
+              <ListItemDecorator><VerticalAlignBottomIcon /></ListItemDecorator>
+                Truncate
+                <span style={{ opacity: 0.5 }}>after this</span>
+            </MenuItem>
+          )}
+          {/* Diagram / Draw / Speak */}
+          {!!props.onTextDiagram && <ListDivider />}
+          {!!props.onTextDiagram && (
+            <MenuItem onClick={handleOpsDiagram} disabled={!couldDiagram}>
+              <ListItemDecorator><AccountTreeOutlinedIcon /></ListItemDecorator>
+              Auto-Diagram ...
+            </MenuItem>
+          )}
+          {!!props.onTextImagine && (
+            <MenuItem onClick={handleOpsImagine} disabled={!couldImagine || props.isImagining}>
+              <ListItemDecorator>{props.isImagining ? <CircularProgress size='sm' /> : <FormatPaintOutlinedIcon />}</ListItemDecorator>
+              Auto-Draw
+            </MenuItem>
+          )}
+          {!!props.onTextSpeak && (
+            <MenuItem onClick={handleOpsSpeak} disabled={!couldSpeak || props.isSpeaking}>
+              <ListItemDecorator>{props.isSpeaking ? <CircularProgress size='sm' /> : <RecordVoiceOverOutlinedIcon />}</ListItemDecorator>
+              Speak
+            </MenuItem>
+          )}
+           {/* Diff Viewer */}
+            {!!props.diffPreviousText && <ListDivider />}
+            {!!props.diffPreviousText && (
+            <MenuItem onClick={handleOpsToggleShowDiff}>
+              <ListItemDecorator><DifferenceIcon /></ListItemDecorator>
+                Show difference
+                <Switch checked={showDiff} onChange={handleOpsToggleShowDiff} sx={{ ml: 'auto' }} />
+              </MenuItem>
+            )}
+          {/* Beam/Restart */}
+          {(!!props.onMessageAssistantFrom || !!props.onMessageBeam) && <ListDivider />}
+          {!!props.onMessageAssistantFrom && (
+              <MenuItem disabled={fromSystem} onClick={handleOpsAssistantFrom}>
+              <ListItemDecorator>{fromAssistant ? <ReplayIcon color='primary' /> : <TelegramIcon color='primary' />}</ListItemDecorator>
+              {!fromAssistant
+                ? <>Restart <span style={{ opacity: 0.5 }}>from here</span></>
+                : !props.isBottom
+                  ? <>Retry <span style={{ opacity: 0.5 }}>from here</span></>
+                : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Retry<KeyStroke variant='outlined' combo='Ctrl + Shift + Z' /></Box>}
+            </MenuItem>
+          )}
+            {!!props.onMessageBeam && (
+              <MenuItem disabled={fromSystem} onClick={handleOpsBeamFrom}>
+              <ListItemDecorator>
+                <ChatBeamIcon color={fromSystem ? undefined : 'primary'} />
+              </ListItemDecorator>
+              {!fromAssistant
+                ? <>Beam <span style={{ opacity: 0.5 }}>from here</span></>
+                : !props.isBottom
+                  ? <>Beam Edit</>
+                  : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Beam Edit<KeyStroke variant='outlined' combo='Ctrl + Shift + B' /></Box>}
+            </MenuItem>
+          )}
+           <ListDivider />
+            <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
+                <ListItemDecorator>
+                    <FormatPaintTwoToneIcon/>
+                     </ListItemDecorator>
+                   Translate
+              {translationInProgress &&  <CircularProgress size="sm" sx={{ ml: "auto" }}/>}
+              </MenuItem>
+            <MenuItem onClick={handleOpenTranslationSettings}>
+                 <ListItemDecorator>
+                     <SettingsIcon />
+                   </ListItemDecorator>
+                  Translation Settings
+              </MenuItem>
+        </CloseablePopup>
+      )}
+        {/* Translation Settings Modal */}
+      <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
+          <Box sx={{
+              maxWidth: 500,
+              bgcolor: 'background.surface',
+              p: 2,
+              borderRadius: 'md'
+          }}>
+              <Typography level='h4' sx={{mb: 2}}>Translation settings</Typography>
+
+              <FormControl sx={{mb: 2}}>
+                  <FormLabel>API Key (comma-separated):</FormLabel>
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)'/>
+              </FormControl>
+
+               <FormControl sx={{mb: 2}}>
+                   <FormLabel>Language Model:</FormLabel>
+                  <select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
+                      <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</option>
+                      <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+                 </select>
+                </FormControl>
+
+               <FormControl sx={{mb: 2}}>
+                  <FormLabel>Source language:</FormLabel>
+                 <Input type="text" name="inlineLangSrc" value={translationSettings.inlineLangSrc} onChange={handleTranslationSettingsChange} placeholder='Source language' />
+                </FormControl>
+              <FormControl sx={{mb: 2}}>
+                  <FormLabel>Target language:</FormLabel>
+                 <Input type="text" name="inlineLangDst" value={translationSettings.inlineLangDst} onChange={handleTranslationSettingsChange} placeholder='Target language' />
+               </FormControl>
+
+                <FormControl sx={{mb: 2}}>
+                  <FormLabel>Translation Color:</FormLabel>
+                  <Input type="color" name="inlineStyle" value={translationSettings.inlineStyle} onChange={handleTranslationSettingsChange} />
+                </FormControl>
+
+             <FormControl sx={{mb: 2}}>
+                  <FormLabel>System Prompt:</FormLabel>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4}/>
+                </FormControl>
+                <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                  <Button onClick={handleCloseTranslationSettings}>Close</Button>
+                </Box>
+           </Box>
+        </Modal>
+    </Box>
+  );
+  
+    function selectApiKey() {
+        if (!translationSettings.apiKey) return null;
+        const apiKeys = translationSettings.apiKey.split(',');
             if (apiKeys.length === 0) return null;
         const selectedIndex = apiKeyIndex % apiKeys.length;
            setApiKeyIndex(selectedIndex + 1);
