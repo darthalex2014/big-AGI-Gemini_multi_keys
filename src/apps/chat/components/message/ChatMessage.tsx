@@ -599,8 +599,9 @@ export function ChatMessage(props: {
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
              setTranslationInProgress(false);
+            handleCloseOpsMenu();
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText]);
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -1128,4 +1129,3 @@ export function ChatMessage(props: {
     </Box>
   );
 }
-
