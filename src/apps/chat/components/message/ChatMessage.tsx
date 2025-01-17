@@ -555,7 +555,6 @@ export function ChatMessage(props: {
             const selectedIndex = apiKeyIndex % apiKeys.length;
            setApiKeyIndex(selectedIndex + 1);
             return apiKeys[selectedIndex];
-        }, [apiKeyIndex, translationSettings.apiKey]);
 
      // Автоматический перевод
      React.useEffect(() => {
