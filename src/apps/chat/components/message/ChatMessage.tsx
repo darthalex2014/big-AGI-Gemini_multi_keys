@@ -1112,6 +1112,7 @@ export function ChatMessage(props: {
             </Box>
             </Box>
            </MenuItem>
+
         </CloseablePopup>
       )}
 
@@ -1239,7 +1240,6 @@ export function ChatMessage(props: {
 
      // Автоматический перевод
      React.useEffect(() => {
-        const autoTranslate = async () => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
             setTranslationInProgress(true);
             const textToTranslate = messageFragmentsReduceText(messageFragments);
@@ -1251,7 +1251,5 @@ export function ChatMessage(props: {
                   setTranslationInProgress(false);
             });
         }
-       }
-        autoTranslate();
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId,  translateText, translationInProgress]);
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId, translationInProgress, translateText]);
 }
