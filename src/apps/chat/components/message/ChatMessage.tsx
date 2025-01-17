@@ -341,7 +341,6 @@ export function ChatMessage(props: {
     onMessageToggleUserFlag?.(messageId, MESSAGE_FLAG_NOTIFY_COMPLETE);
   }, [isUserNotifyComplete, messageId, onMessageToggleUserFlag]);
 
-
     const handleOpsAssistantFrom = async (e: React.MouseEvent) => {
     e.preventDefault();
     handleCloseOpsMenu();
@@ -597,7 +596,7 @@ export function ChatMessage(props: {
       translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
                const newFragment = createTextContentFragment(translatedText);
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                props.onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
                 setTranslationInProgress(false);
             });
@@ -623,18 +622,21 @@ export function ChatMessage(props: {
 
      // Автоматический перевод
      React.useEffect(() => {
+        const autoTranslate = async () => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
             setTranslationInProgress(true);
             const textToTranslate = messageFragmentsReduceText(messageFragments);
             translateText(textToTranslate, (translatedText) => {
                 if (translatedText) {
                     const newFragment = createTextContentFragment(translatedText);
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                    props.onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
                 }
                   setTranslationInProgress(false);
             });
         }
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
+       }
+        autoTranslate();
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId, translateText, translationInProgress]);
 
 
   // Blocks renderer
@@ -1240,6 +1242,7 @@ export function ChatMessage(props: {
 
      // Автоматический перевод
      React.useEffect(() => {
+        const autoTranslate = async () => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
             setTranslationInProgress(true);
             const textToTranslate = messageFragmentsReduceText(messageFragments);
@@ -1251,5 +1254,7 @@ export function ChatMessage(props: {
                   setTranslationInProgress(false);
             });
         }
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId, translationInProgress, translateText]);
+       }
+        autoTranslate();
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId, translateText, translationInProgress]);
 }
