@@ -1,9 +1,8 @@
 import * as React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import TimeAgo from 'react-timeago';
 
 import type { SxProps } from '@mui/joy/styles/types';
-import { Box, ButtonGroup, CircularProgress, Divider, IconButton, ListDivider, ListItem, ListItemDecorator, MenuItem, Switch, Tooltip, Typography } from '@mui/joy';
+import { Box, Button, ButtonGroup, CircularProgress, Divider, IconButton, ListDivider, ListItem, ListItemButton, ListItemDecorator, Menu, MenuItem, Switch, Tooltip, Typography, Modal, ModalClose, Textarea, FormControl, FormLabel, Input } from '@mui/joy';
 import { ClickAwayListener, Popper } from '@mui/base';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
@@ -15,7 +14,7 @@ import DifferenceIcon from '@mui/icons-material/Difference';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ForkRightIcon from '@mui/icons-material/ForkRight';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
-import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintOutlined';
+import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintTwoTone';
 import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -30,6 +29,8 @@ import TextureIcon from '@mui/icons-material/Texture';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import SettingsIcon from '@mui/icons-material/Settings';
+
 
 import { ModelVendorAnthropic } from '~/modules/llms/vendors/anthropic/anthropic.vendor';
 
@@ -170,6 +171,17 @@ export function ChatMessage(props: {
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
+  const [isAutoTranslateEnabled, setIsAutoTranslateEnabled] = React.useState(false); // Состояние для автоперевода
+  const [translationInProgress, setTranslationInProgress] = React.useState(false);
+  const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
+   const [translationSettings, setTranslationSettings] = React.useState({
+        apiKey: localStorage.getItem("apiKey") || "",
+        languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
+        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+        inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
+        systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
+    });
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -180,7 +192,7 @@ export function ChatMessage(props: {
   })));
   const labsEnhanceCodeBlocks = useUXLabsStore(state => state.labsEnhanceCodeBlocks);
   const [showDiff, setShowDiff] = useChatShowTextDiff();
-
+  const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
 
   // derived state
   const {
@@ -321,13 +333,14 @@ export function ChatMessage(props: {
     onMessageToggleUserFlag?.(messageId, MESSAGE_FLAG_STARRED);
   }, [messageId, onMessageToggleUserFlag]);
 
-  const handleOpsToggleNotifyComplete = React.useCallback(() => {
+    const handleOpsToggleNotifyComplete = React.useCallback(() => {
     // also remember the preference, for auto-setting flags by the persona
     setIsNotificationEnabledForModel(messageId, !isUserNotifyComplete);
     onMessageToggleUserFlag?.(messageId, MESSAGE_FLAG_NOTIFY_COMPLETE);
   }, [isUserNotifyComplete, messageId, onMessageToggleUserFlag]);
 
-  const handleOpsAssistantFrom = async (e: React.MouseEvent) => {
+
+    const handleOpsAssistantFrom = async (e: React.MouseEvent) => {
     e.preventDefault();
     handleCloseOpsMenu();
     await props.onMessageAssistantFrom?.(messageId, fromAssistant ? -1 : 0);
@@ -339,14 +352,14 @@ export function ChatMessage(props: {
     await props.onMessageBeam?.(messageId);
   };
 
-  const handleOpsBranch = (e: React.MouseEvent) => {
+    const handleOpsBranch = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // to try to not steal the focus from the branched conversation
     props.onMessageBranch?.(messageId);
     handleCloseOpsMenu();
   };
 
-  const handleOpsToggleShowDiff = () => setShowDiff(!showDiff);
+    const handleOpsToggleShowDiff = () => setShowDiff(!showDiff);
 
   const handleOpsDiagram = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -358,7 +371,7 @@ export function ChatMessage(props: {
     }
   };
 
-  const handleOpsImagine = async (e: React.MouseEvent) => {
+   const handleOpsImagine = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (props.onTextImagine) {
       await props.onTextImagine(textSubject.trim());
@@ -368,7 +381,7 @@ export function ChatMessage(props: {
     }
   };
 
-  const handleOpsAddInReferenceTo = (e: React.MouseEvent) => {
+   const handleOpsAddInReferenceTo = (e: React.MouseEvent) => {
     e.preventDefault();
     if (onAddInReferenceTo && textSubject.trim().length >= BUBBLE_MIN_TEXT_LENGTH) {
       onAddInReferenceTo({ mrt: 'dmsg', mText: textSubject.trim(), mRole: messageRole /*, messageId*/ });
@@ -388,12 +401,12 @@ export function ChatMessage(props: {
     }
   };
 
-  const handleOpsTruncate = (_e: React.MouseEvent) => {
+    const handleOpsTruncate = (_e: React.MouseEvent) => {
     props.onMessageTruncate?.(messageId);
-    handleCloseOpsMenu();
+      handleCloseOpsMenu();
   };
 
-  const handleOpsDelete = React.useCallback(() => {
+    const handleOpsDelete = React.useCallback(() => {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
 
@@ -499,6 +512,129 @@ export function ChatMessage(props: {
     setBubbleAnchor(anchorEl);
     setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
   }, [closeBubble]);
+
+
+    // Translation
+
+    const handleTranslateText = React.useCallback(() => {
+      setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+      translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+            }
+                setTranslationInProgress(false);
+            });
+    }, [messageFragments, onMessageFragmentReplace, messageId, translateText]);
+
+    const handleAutoTranslateToggle = React.useCallback(() => {
+        setIsAutoTranslateEnabled(prev => !prev);
+    }, []);
+
+    const handleOpenTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(true);
+    }, []);
+
+    const handleCloseTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(false);
+    }, []);
+
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
+
+
+        const selectApiKey = React.useCallback(() => {
+             if (!translationSettings.apiKey) return null;
+            const apiKeys = translationSettings.apiKey.split(',');
+             if (apiKeys.length === 0) return null;
+            const selectedIndex = apiKeyIndex % apiKeys.length;
+           setApiKeyIndex(selectedIndex + 1);
+            return apiKeys[selectedIndex];
+        }, [apiKeyIndex, translationSettings.apiKey]);
+
+     // Автоматический перевод
+     React.useEffect(() => {
+        if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
+            setTranslationInProgress(true);
+            const textToTranslate = messageFragmentsReduceText(messageFragments);
+            translateText(textToTranslate, (translatedText) => {
+                if (translatedText) {
+                    const newFragment = createTextContentFragment(translatedText);
+                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                }
+                  setTranslationInProgress(false);
+            });
+        }
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
+
+       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+            const selectedKey = selectApiKey();
+            if (!selectedKey) {
+              alert('No API key set')
+                callback(null);
+              return;
+            }
+           const formattedPrompt = translationSettings.systemPrompt
+                .replace("{sourceLang}", translationSettings.inlineLangSrc)
+                .replace("{targetLang}", translationSettings.inlineLangDst)
+                .replace("{text}", text);
+
+
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+              },
+             body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        threshold: "OFF"
+                    }
+                ]
+             }),
+            })
+            .then(response => response.json())
+              .then(data => {
+                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+                    const translatedText = data.candidates[0].content.parts[0].text;
+                      callback(translatedText);
+                   }
+                   else{
+                       callback(null);
+                   }
+               })
+                .catch(()=> {
+                    callback(null)
+                });
+            }, [translationSettings, selectApiKey]
+        );
 
 
   // Blocks renderer
@@ -825,7 +961,7 @@ export function ChatMessage(props: {
               <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
               Copy
             </MenuItem>
-            {/* Starred */}
+              {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
                 <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
@@ -842,14 +978,14 @@ export function ChatMessage(props: {
             )}
           </Box>
 
-          {/* Notify Complete */}
-          {messagePendingIncomplete && !!onMessageToggleUserFlag && <ListDivider />}
-          {messagePendingIncomplete && !!onMessageToggleUserFlag && (
-            <MenuItem onClick={handleOpsToggleNotifyComplete}>
-              <ListItemDecorator>{isUserNotifyComplete ? <NotificationsActiveIcon /> : <NotificationsOutlinedIcon />}</ListItemDecorator>
-              Notify on reply
-            </MenuItem>
-          )}
+            {/* Notify Complete */}
+            {messagePendingIncomplete && !!onMessageToggleUserFlag && <ListDivider />}
+            {messagePendingIncomplete && !!onMessageToggleUserFlag && (
+              <MenuItem onClick={handleOpsToggleNotifyComplete}>
+                  <ListItemDecorator>{isUserNotifyComplete ? <NotificationsActiveIcon /> : <NotificationsOutlinedIcon />}</ListItemDecorator>
+                Notify on reply
+              </MenuItem>
+           )}
 
           {/* Anthropic Breakpoint Toggle */}
           {!messagePendingIncomplete && <ListDivider />}
@@ -884,18 +1020,18 @@ export function ChatMessage(props: {
               {!props.isBottom && <span style={{ opacity: 0.5 }}>from here</span>}
             </MenuItem>
           )}
-          {!!props.onMessageDelete && (
-            <MenuItem onClick={handleOpsDelete} disabled={false /*fromSystem*/}>
-              <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
-              Delete
-              <span style={{ opacity: 0.5 }}>message</span>
-            </MenuItem>
+            {!!props.onMessageDelete && (
+              <MenuItem onClick={handleOpsDelete} disabled={false /*fromSystem*/}>
+                <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
+                  Delete
+                  <span style={{ opacity: 0.5 }}>message</span>
+              </MenuItem>
           )}
           {!!props.onMessageTruncate && (
             <MenuItem onClick={handleOpsTruncate} disabled={props.isBottom}>
               <ListItemDecorator><VerticalAlignBottomIcon /></ListItemDecorator>
-              Truncate
-              <span style={{ opacity: 0.5 }}>after this</span>
+                Truncate
+                <span style={{ opacity: 0.5 }}>after this</span>
             </MenuItem>
           )}
           {/* Diagram / Draw / Speak */}
@@ -918,29 +1054,29 @@ export function ChatMessage(props: {
               Speak
             </MenuItem>
           )}
-          {/* Diff Viewer */}
-          {!!props.diffPreviousText && <ListDivider />}
-          {!!props.diffPreviousText && (
+           {/* Diff Viewer */}
+            {!!props.diffPreviousText && <ListDivider />}
+            {!!props.diffPreviousText && (
             <MenuItem onClick={handleOpsToggleShowDiff}>
               <ListItemDecorator><DifferenceIcon /></ListItemDecorator>
-              Show difference
-              <Switch checked={showDiff} onChange={handleOpsToggleShowDiff} sx={{ ml: 'auto' }} />
-            </MenuItem>
-          )}
+                Show difference
+                <Switch checked={showDiff} onChange={handleOpsToggleShowDiff} sx={{ ml: 'auto' }} />
+              </MenuItem>
+            )}
           {/* Beam/Restart */}
           {(!!props.onMessageAssistantFrom || !!props.onMessageBeam) && <ListDivider />}
           {!!props.onMessageAssistantFrom && (
-            <MenuItem disabled={fromSystem} onClick={handleOpsAssistantFrom}>
+              <MenuItem disabled={fromSystem} onClick={handleOpsAssistantFrom}>
               <ListItemDecorator>{fromAssistant ? <ReplayIcon color='primary' /> : <TelegramIcon color='primary' />}</ListItemDecorator>
               {!fromAssistant
                 ? <>Restart <span style={{ opacity: 0.5 }}>from here</span></>
                 : !props.isBottom
                   ? <>Retry <span style={{ opacity: 0.5 }}>from here</span></>
-                  : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Retry<KeyStroke variant='outlined' combo='Ctrl + Shift + Z' /></Box>}
+                : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Retry<KeyStroke variant='outlined' combo='Ctrl + Shift + Z' /></Box>}
             </MenuItem>
           )}
-          {!!props.onMessageBeam && (
-            <MenuItem disabled={fromSystem} onClick={handleOpsBeamFrom}>
+            {!!props.onMessageBeam && (
+              <MenuItem disabled={fromSystem} onClick={handleOpsBeamFrom}>
               <ListItemDecorator>
                 <ChatBeamIcon color={fromSystem ? undefined : 'primary'} />
               </ListItemDecorator>
@@ -1050,36 +1186,80 @@ export function ChatMessage(props: {
           </ClickAwayListener>
         </Popper>
       )}
+     {/* Translation Settings Modal */}
+      <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
+          <Box sx={{
+              maxWidth: 500,
+              bgcolor: 'background.surface',
+              p: 2,
+              borderRadius: 'md'
+          }}>
+              <Typography level='h4' sx={{mb: 2}}>Translation settings</Typography>
 
+              <FormControl sx={{mb: 2}}>
+                  <FormLabel>API Key (comma-separated):</FormLabel>
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)'/>
+              </FormControl>
 
-      {/* Context (Right-click) Menu */}
-      {!!contextMenuAnchor && (
-        <CloseablePopup
-          menu anchorEl={contextMenuAnchor} onClose={closeContextMenu}
-          dense
-          minWidth={220}
-          placement='bottom-start'
+               <FormControl sx={{mb: 2}}>
+                   <FormLabel>Language Model:</FormLabel>
+                  <select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
+                      <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</option>
+                      <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+                 </select>
+                </FormControl>
+
+               <FormControl sx={{mb: 2}}>
+                  <FormLabel>Source language:</FormLabel>
+                 <Input type="text" name="inlineLangSrc" value={translationSettings.inlineLangSrc} onChange={handleTranslationSettingsChange} placeholder='Source language' />
+                </FormControl>
+              <FormControl sx={{mb: 2}}>
+                  <FormLabel>Target language:</FormLabel>
+                 <Input type="text" name="inlineLangDst" value={translationSettings.inlineLangDst} onChange={handleTranslationSettingsChange} placeholder='Target language' />
+               </FormControl>
+
+                <FormControl sx={{mb: 2}}>
+                  <FormLabel>Translation Color:</FormLabel>
+                  <Input type="color" name="inlineStyle" value={translationSettings.inlineStyle} onChange={handleTranslationSettingsChange} />
+                </FormControl>
+
+             <FormControl sx={{mb: 2}}>
+                  <FormLabel>System Prompt:</FormLabel>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4}/>
+                </FormControl>
+                <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                  <Button onClick={handleCloseTranslationSettings}>Close</Button>
+                </Box>
+           </Box>
+        </Modal>
+    
+       <Box  sx={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            px: 1,
+        }}
         >
-          <MenuItem onClick={handleOpsCopy} sx={{ flex: 1, alignItems: 'center' }}>
-            <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
-            Copy
-          </MenuItem>
-          {!!props.onTextDiagram && <ListDivider />}
-          {!!props.onTextDiagram && <MenuItem onClick={handleOpsDiagram} disabled={!couldDiagram || props.isImagining}>
-            <ListItemDecorator><AccountTreeOutlinedIcon /></ListItemDecorator>
-            Auto-Diagram ...
-          </MenuItem>}
-          {!!props.onTextImagine && <MenuItem onClick={handleOpsImagine} disabled={!couldImagine || props.isImagining}>
-            <ListItemDecorator>{props.isImagining ? <CircularProgress size='sm' /> : <FormatPaintOutlinedIcon />}</ListItemDecorator>
-            Auto-Draw
-          </MenuItem>}
-          {!!props.onTextSpeak && <MenuItem onClick={handleOpsSpeak} disabled={!couldSpeak || props.isSpeaking}>
-            <ListItemDecorator>{props.isSpeaking ? <CircularProgress size='sm' /> : <RecordVoiceOverOutlinedIcon />}</ListItemDecorator>
-            Speak
-          </MenuItem>}
-        </CloseablePopup>
-      )}
-
+            <ButtonGroup size='sm' variant='plain'>
+            {fromAssistant && <Tooltip title='Translate'>
+              <IconButton onClick={handleTranslateText} disabled={translationInProgress} sx={{ color: 'primary' }}>
+                <FormatPaintTwoToneIcon/>
+                  </IconButton>
+            </Tooltip>}
+             <Tooltip title='Auto Translate'>
+                <IconButton color={isAutoTranslateEnabled ? 'primary' : undefined} onClick={handleAutoTranslateToggle}>
+                    <TelegramIcon  color={isAutoTranslateEnabled ? 'primary' : undefined}/>
+                </IconButton>
+             </Tooltip>
+             <Tooltip title='Translation Settings'>
+                <IconButton color='neutral' onClick={handleOpenTranslationSettings}>
+                  <SettingsIcon />
+              </IconButton>
+             </Tooltip>
+              </ButtonGroup>
+        </Box>
     </Box>
   );
 }
