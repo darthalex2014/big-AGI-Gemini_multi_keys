@@ -590,11 +590,41 @@ export function ChatMessage(props: {
             }, [translationSettings, selectApiKey]
         );
 
+    const handleTranslateText = React.useCallback(() => {
+      setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+      translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+            }
+                setTranslationInProgress(false);
+            });
+    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
+
+    const handleAutoTranslateToggle = React.useCallback(() => {
+        setIsAutoTranslateEnabled(prev => !prev);
+    }, []);
+
+    const handleOpenTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(true);
+    }, []);
+
+    const handleCloseTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(false);
+    }, []);
+
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
+
      // Автоматический перевод
      React.useEffect(() => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
-          setTranslationInProgress(true);
-          const textToTranslate = messageFragmentsReduceText(messageFragments);
+            setTranslationInProgress(true);
+            const textToTranslate = messageFragmentsReduceText(messageFragments);
             translateText(textToTranslate, (translatedText) => {
                 if (translatedText) {
                     // Check if the translated text is different from original
