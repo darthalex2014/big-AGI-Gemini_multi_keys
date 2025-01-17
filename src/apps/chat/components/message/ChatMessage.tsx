@@ -527,13 +527,13 @@ export function ChatMessage(props: {
             }
                 setTranslationInProgress(false);
             });
-    }, [messageFragments, onMessageFragmentReplace, messageId, translateText, contentOrVoidFragments]);
+    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
 
     const handleAutoTranslateToggle = React.useCallback(() => {
         setIsAutoTranslateEnabled(prev => !prev);
     }, []);
 
-    const handleOpenTranslationSettings = React.useCallback(() => {
+    const handleOpenTranslationSettings = React.useCallback(() => {	
       setTranslationSettingsOpen(true);
     }, []);
 
@@ -571,6 +571,7 @@ export function ChatMessage(props: {
             });
         }
        }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
+        }, [apiKeyIndex, translationSettings.apiKey]);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
