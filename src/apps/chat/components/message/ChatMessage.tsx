@@ -173,7 +173,7 @@ export function ChatMessage(props: {
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
-  const [translationInProgress, setTranslationInProgress] = React.useState(false);
+    const [translationInProgress, setTranslationInProgress] = React.useState(false);
   const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
    const [translationSettings, setTranslationSettings] = React.useState({
         apiKey: localStorage.getItem("apiKey") || "",
@@ -183,6 +183,7 @@ export function ChatMessage(props: {
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
     });
+  const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -193,7 +194,7 @@ export function ChatMessage(props: {
   })));
   const labsEnhanceCodeBlocks = useUXLabsStore(state => state.labsEnhanceCodeBlocks);
   const [showDiff, setShowDiff] = useChatShowTextDiff();
-  const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
+
 
   // derived state
   const {
