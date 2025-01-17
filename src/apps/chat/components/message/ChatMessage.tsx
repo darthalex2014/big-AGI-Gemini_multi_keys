@@ -32,10 +32,7 @@ import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SettingsIcon from '@mui/icons-material/Settings';
-
-
 import { ModelVendorAnthropic } from '~/modules/llms/vendors/anthropic/anthropic.vendor';
-
 import { AnthropicIcon } from '~/common/components/icons/vendors/AnthropicIcon';
 import { ChatBeamIcon } from '~/common/components/icons/ChatBeamIcon';
 import { CloseablePopup } from '~/common/components/CloseablePopup';
@@ -50,7 +47,6 @@ import { createTextContentFragment, DMessageFragment, DMessageFragmentId, update
 import { useFragmentBuckets } from '~/common/stores/chat/hooks/useFragmentBuckets';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
 import { useUXLabsStore } from '~/common/state/store-ux-labs';
-
 import { BlockOpContinue } from './BlockOpContinue';
 import { ContentFragments } from './fragments-content/ContentFragments';
 import { DocumentAttachmentFragments } from './fragments-attachment-doc/DocumentAttachmentFragments';
@@ -81,7 +77,7 @@ const messageBodyReverseSx: SxProps = {
   flexDirection: 'row-reverse',
 };
 
-export const messageSkippedSx = {
+export const messageSkippedSx: SxProps = {
   // show a nice ghostly border (dashed?)
   border: '1px dashed',
   borderColor: 'neutral.solidBg',
@@ -621,21 +617,25 @@ export function ChatMessage(props: {
        }, []);
 
      // Автоматический перевод
+     const translatedMessageRef = React.useRef<string | null>(null);
+
      React.useEffect(() => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
-            setTranslationInProgress(true);
             const textToTranslate = messageFragmentsReduceText(messageFragments);
+            if (translatedMessageRef.current === textToTranslate) return;
+            setTranslationInProgress(true);
             translateText(textToTranslate, (translatedText) => {
                 if (translatedText) {
                     const newFragment = createTextContentFragment(translatedText);
                     onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                    translatedMessageRef.current = textToTranslate;
                 }
                   setTranslationInProgress(false);
             });
+        } else {
+          translatedMessageRef.current = null;
         }
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
-
-
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translateText, translationInProgress]);
 
   // Blocks renderer
 
@@ -961,7 +961,7 @@ export function ChatMessage(props: {
               <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
               Copy
             </MenuItem>
-            {/* Starred */}
+              {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
                 <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
@@ -1262,95 +1262,4 @@ export function ChatMessage(props: {
         </Box>
     </Box>
   );
-
-    function selectApiKey() {
-             if (!translationSettings.apiKey) return null;
-            const apiKeys = translationSettings.apiKey.split(',');
-             if (apiKeys.length === 0) return null;
-            const selectedIndex = apiKeyIndex % apiKeys.length;
-           setApiKeyIndex(selectedIndex + 1);
-            return apiKeys[selectedIndex];
-        };
-
-       async function translateText(text: string, callback: (translatedText: string | null) => void) {
-            const selectedKey = selectApiKey();
-            if (!selectedKey) {
-              alert('No API key set')
-                callback(null);
-              return;
-            }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
-                .replace("{text}", text);
-
-
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": selectedKey,
-              },
-             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: formattedPrompt
-                    }]
-                }],
-                safetySettings: [{
-                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HATE_SPEECH",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HARASSMENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
-                        threshold: "OFF"
-                    }
-                ]
-             }),
-            })
-            .then(response => response.json())
-              .then(data => {
-                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
-                    const translatedText = data.candidates[0].content.parts[0].text;
-                      callback(translatedText);
-                   }
-                   else{
-                       callback(null);
-                   }
-               })
-                .catch(()=> {
-                    callback(null)
-                });
-            };
-
-     // Автоматический перевод
-     React.useEffect(() => {
-        const autoTranslate = async () => {
-        if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
-            setTranslationInProgress(true);
-            const textToTranslate = messageFragmentsReduceText(messageFragments);
-            translateText(textToTranslate, (translatedText) => {
-                if (translatedText) {
-                    const newFragment = createTextContentFragment(translatedText);
-                    props.onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                }
-                  setTranslationInProgress(false);
-            });
-        }
-       }
-        autoTranslate();
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, props.onMessageFragmentReplace, messageId, translateText, translationInProgress]);
 }
