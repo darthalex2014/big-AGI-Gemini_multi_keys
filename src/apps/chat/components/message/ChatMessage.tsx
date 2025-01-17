@@ -1096,7 +1096,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }} />
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin', '&::-webkit-scrollbar': { display: 'block', width: '8px' } }} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1123,7 +1123,7 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin'}}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'scroll', scrollbarWidth: 'thin','&::-webkit-scrollbar': { display: 'block', width: '8px' } }}/>
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
