@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import TimeAgo from 'react-timeago';
@@ -30,7 +29,7 @@ import StrikethroughSIcon from '@mui/icons-material/StrikethroughS';
 import TelegramIcon from '@mui/icons-material/Telegram';
 import TextureIcon from '@mui/icons-material/Texture';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SettingsIcon from '@mui/icons-material/Settings';
 
@@ -174,8 +173,7 @@ export function ChatMessage(props: {
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
-    const [translationInProgress, setTranslationInProgress] = React.useState(false);
-  const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
+   const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
    const [translationSettings, setTranslationSettings] = React.useState({
         apiKey: localStorage.getItem("apiKey") || "",
         languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
@@ -184,7 +182,8 @@ export function ChatMessage(props: {
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
     });
-  const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
+    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
+    const [translationInProgress, setTranslationInProgress] = React.useState(false);
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -217,7 +216,7 @@ export function ChatMessage(props: {
 
   const isUserMessageSkipped = messageHasUserFlag(props.message, MESSAGE_FLAG_AIX_SKIP);
   const isUserStarred = messageHasUserFlag(props.message, MESSAGE_FLAG_STARRED);
-  const isUserNotifyComplete = messageHasUserFlag(props.message, MESSAGE_FLAG_NOTIFY_COMPLETE);
+    const isUserNotifyComplete = messageHasUserFlag(props.message, MESSAGE_FLAG_NOTIFY_COMPLETE);
   const isVndAndCacheAuto = !!props.showAntPromptCaching && messageHasUserFlag(props.message, MESSAGE_FLAG_VND_ANT_CACHE_AUTO);
   const isVndAndCacheUser = !!props.showAntPromptCaching && messageHasUserFlag(props.message, MESSAGE_FLAG_VND_ANT_CACHE_USER);
 
@@ -358,7 +357,7 @@ export function ChatMessage(props: {
     e.preventDefault();
     e.stopPropagation(); // to try to not steal the focus from the branched conversation
     props.onMessageBranch?.(messageId);
-    handleCloseOpsMenu();
+      handleCloseOpsMenu();
   };
 
     const handleOpsToggleShowDiff = () => setShowDiff(!showDiff);
@@ -516,7 +515,6 @@ export function ChatMessage(props: {
   }, [closeBubble]);
 
 
-    // Translation
      const selectApiKey = React.useCallback(() => {
              if (!translationSettings.apiKey) return null;
             const apiKeys = translationSettings.apiKey.split(',');
@@ -591,17 +589,19 @@ export function ChatMessage(props: {
             }, [translationSettings, selectApiKey]
         );
 
+
     const handleTranslateText = React.useCallback(() => {
-      setTranslationInProgress(true);
+        setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-      translateText(textToTranslate, (translatedText) => {
+        translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
                const newFragment = createTextContentFragment(translatedText);
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
-                setTranslationInProgress(false);
-            });
-    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
+             setTranslationInProgress(false);
+        });
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText]);
+
 
     const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
@@ -616,6 +616,7 @@ export function ChatMessage(props: {
         setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
         localStorage.setItem(name, value)
        }, []);
+
 
   // Blocks renderer
 
@@ -698,7 +699,6 @@ export function ChatMessage(props: {
 
 
   // avatar icon & label & tooltip
-
   const zenMode = uiComplexityMode === 'minimal';
 
   const showAvatarIcon = !props.hideAvatar && !zenMode;
@@ -941,7 +941,7 @@ export function ChatMessage(props: {
               <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
               Copy
             </MenuItem>
-              {/* Starred */}
+            {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
                 <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
@@ -1067,24 +1067,20 @@ export function ChatMessage(props: {
                   : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Beam Edit<KeyStroke variant='outlined' combo='Ctrl + Shift + B' /></Box>}
             </MenuItem>
           )}
-           <ListDivider />
+            {/* Translation */}
+            <ListDivider />
             <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
-                <ListItemDecorator>
-                    <FormatPaintTwoToneIcon/>
-                     </ListItemDecorator>
-                   Translate
-              {translationInProgress &&  <CircularProgress size="sm" sx={{ ml: "auto" }}/>}
+                <ListItemDecorator><FormatPaintTwoToneIcon/></ListItemDecorator>
+                Translate {translationInProgress &&  <CircularProgress size='sm' />}
               </MenuItem>
-            <MenuItem onClick={handleOpenTranslationSettings}>
-                 <ListItemDecorator>
-                     <SettingsIcon />
-                   </ListItemDecorator>
-                  Translation Settings
-              </MenuItem>
+             <MenuItem onClick={handleOpenTranslationSettings}>
+                <ListItemDecorator><SettingsIcon /></ListItemDecorator>
+                Translation settings
+             </MenuItem>
         </CloseablePopup>
       )}
-        {/* Translation Settings Modal */}
-      <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
+       {/* Translation Settings Modal */}
+        <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
           <Box sx={{
               maxWidth: 500,
               bgcolor: 'background.surface',
@@ -1131,78 +1127,5 @@ export function ChatMessage(props: {
         </Modal>
     </Box>
   );
-  
-    function selectApiKey() {
-        if (!translationSettings.apiKey) return null;
-        const apiKeys = translationSettings.apiKey.split(',');
-            if (apiKeys.length === 0) return null;
-        const selectedIndex = apiKeyIndex % apiKeys.length;
-           setApiKeyIndex(selectedIndex + 1);
-            return apiKeys[selectedIndex];
-        };
-
-     const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
-            const selectedKey = selectApiKey();
-            if (!selectedKey) {
-              alert('No API key set')
-                callback(null);
-              return;
-            }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
-                .replace("{text}", text);
-
-
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": selectedKey,
-              },
-             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: formattedPrompt
-                    }]
-                }],
-                safetySettings: [{
-                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HATE_SPEECH",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HARASSMENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
-                        threshold: "OFF"
-                    }
-                ]
-             }),
-            })
-            .then(response => response.json())
-              .then(data => {
-                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
-                    const translatedText = data.candidates[0].content.parts[0].text;
-                      callback(translatedText);
-                   }
-                   else{
-                       callback(null);
-                   }
-               })
-                .catch(()=> {
-                    callback(null)
-                });
-            }, [translationSettings, selectApiKey]
-        );
 }
+
