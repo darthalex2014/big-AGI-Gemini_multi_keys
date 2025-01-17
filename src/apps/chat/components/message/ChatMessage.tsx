@@ -173,7 +173,6 @@ export function ChatMessage(props: {
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
-  const [isAutoTranslateEnabled, setIsAutoTranslateEnabled] = React.useState(false); // Состояние для автоперевода
   const [translationInProgress, setTranslationInProgress] = React.useState(false);
   const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
    const [translationSettings, setTranslationSettings] = React.useState({
@@ -602,10 +601,6 @@ export function ChatMessage(props: {
             });
     }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
 
-    const handleAutoTranslateToggle = React.useCallback(() => {
-        setIsAutoTranslateEnabled(prev => !prev);
-    }, []);
-
     const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
     }, []);
@@ -619,26 +614,6 @@ export function ChatMessage(props: {
         setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
         localStorage.setItem(name, value)
        }, []);
-
-     // Автоматический перевод
-     React.useEffect(() => {
-        if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
-            setTranslationInProgress(true);
-            const textToTranslate = messageFragmentsReduceText(messageFragments);
-            translateText(textToTranslate, (translatedText) => {
-                if (translatedText) {
-                    // Check if the translated text is different from original
-                    if (translatedText !== textToTranslate) {
-                        const newFragment = createTextContentFragment(translatedText);
-                         onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                    }
-                }
-                 setTranslationInProgress(false);
-            });
-        }
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
-
-
 
 
   // Blocks renderer
@@ -965,7 +940,7 @@ export function ChatMessage(props: {
               <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
               Copy
             </MenuItem>
-            {/* Starred */}
+              {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
                 <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
@@ -1091,106 +1066,23 @@ export function ChatMessage(props: {
                   : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Beam Edit<KeyStroke variant='outlined' combo='Ctrl + Shift + B' /></Box>}
             </MenuItem>
           )}
+           <ListDivider />
+            <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
+                <ListItemDecorator>
+                    <FormatPaintTwoToneIcon/>
+                     </ListItemDecorator>
+                   Translate
+              {translationInProgress &&  <CircularProgress size="sm" sx={{ ml: "auto" }}/>}
+              </MenuItem>
+            <MenuItem onClick={handleOpenTranslationSettings}>
+                 <ListItemDecorator>
+                     <SettingsIcon />
+                   </ListItemDecorator>
+                  Translation Settings
+              </MenuItem>
         </CloseablePopup>
       )}
-
-
-      {/* Bubble Over Toolbar */}
-      {ENABLE_BUBBLE && !!bubbleAnchor && (
-        <Popper placement='top-start' open={true} anchorEl={bubbleAnchor} slotProps={{
-          root: { style: { zIndex: themeZIndexChatBubble } },
-        }}>
-          <ClickAwayListener onClickAway={() => closeBubble()}>
-            <ButtonGroup
-              variant='plain'
-              sx={{
-                '--ButtonGroup-separatorColor': 'none !important',
-                '--ButtonGroup-separatorSize': 0,
-                borderRadius: '0',
-                backgroundColor: 'background.popup',
-                border: '1px solid',
-                borderColor: 'primary.outlinedBorder',
-                boxShadow: '0px 4px 24px -8px rgb(var(--joy-palette-neutral-darkChannel) / 50%)',
-                mb: 1.5,
-                ml: -1.5,
-                alignItems: 'center',
-                '& > button': {
-                  '--Icon-fontSize': 'var(--joy-fontSize-lg, 1.125rem)',
-                  minHeight: '2.5rem',
-                  minWidth: '2.75rem',
-                },
-              }}
-            >
-              {/* Bubble Add Reference */}
-              {!!onAddInReferenceTo && <Tooltip disableInteractive arrow placement='top' title={props.hasInReferenceTo ? 'Reply to this too' : fromAssistant ? 'Reply' : 'Refer To'}>
-                <IconButton color='primary' onClick={handleOpsAddInReferenceTo}>
-                  {props.hasInReferenceTo ? <ReplyAllRoundedIcon sx={{ fontSize: 'xl' }} /> : <ReplyRoundedIcon sx={{ fontSize: 'xl' }} />}
-                </IconButton>
-              </Tooltip>}
-              {/*{!!props.onMessageBeam && fromAssistant && <Tooltip disableInteractive arrow placement='top' title='Beam'>*/}
-              {/*  <IconButton color='primary'>*/}
-              {/*    <ChatBeamIcon sx={{ fontSize: 'xl' }} />*/}
-              {/*  </IconButton>*/}
-              {/*</Tooltip>}*/}
-              {!!onAddInReferenceTo && <Divider />}
-
-              {/* Text Tools (edits fragment, only for assistant messages) */}
-              {fromAssistant && <Tooltip disableInteractive arrow placement='top' title='Highlight Text'>
-                <IconButton disabled={!handleHighlightSelText} onClick={!handleHighlightSelText ? undefined : () => {
-                  handleHighlightSelText('highlight');
-                  closeBubble();
-                }}>
-                  <MarkHighlightIcon hcolor={handleHighlightSelText ? 'yellow' : undefined} />
-                </IconButton>
-              </Tooltip>}
-              {fromAssistant && <Tooltip disableInteractive arrow placement='top' title='Strike Through'>
-                <IconButton disabled={!handleHighlightSelText} onClick={!handleHighlightSelText ? undefined : () => {
-                  handleHighlightSelText('strike');
-                  closeBubble();
-                }}>
-                  <StrikethroughSIcon />
-                </IconButton>
-              </Tooltip>}
-              {fromAssistant && <Tooltip disableInteractive arrow placement='top' title='Toggle Bold'>
-                <IconButton disabled={!handleHighlightSelText} onClick={!handleHighlightSelText ? undefined : () => {
-                  handleHighlightSelText('strong');
-                  closeBubble();
-                }}>
-                  <FormatBoldIcon />
-                </IconButton>
-              </Tooltip>}
-              {fromAssistant && <Divider />}
-
-              {/* Intelligent functions */}
-              {!!props.onTextDiagram && <Tooltip disableInteractive arrow placement='top' title={couldDiagram ? 'Auto-Diagram...' : 'Too short to Auto-Diagram'}>
-                <IconButton color='success' onClick={couldDiagram ? handleOpsDiagram : undefined}>
-                  <AccountTreeOutlinedIcon sx={{ color: couldDiagram ? 'primary' : 'neutral.plainDisabledColor' }} />
-                </IconButton>
-              </Tooltip>}
-              {!!props.onTextImagine && <Tooltip disableInteractive arrow placement='top' title='Auto-Draw'>
-                <IconButton color='success' onClick={handleOpsImagine} disabled={!couldImagine || props.isImagining}>
-                  {!props.isImagining ? <FormatPaintOutlinedIcon /> : <CircularProgress sx={{ '--CircularProgress-size': '16px' }} />}
-                </IconButton>
-              </Tooltip>}
-              {!!props.onTextSpeak && <Tooltip disableInteractive arrow placement='top' title='Speak'>
-                <IconButton color='success' onClick={handleOpsSpeak} disabled={!couldSpeak || props.isSpeaking}>
-                  {!props.isSpeaking ? <RecordVoiceOverOutlinedIcon /> : <CircularProgress sx={{ '--CircularProgress-size': '16px' }} />}
-                </IconButton>
-              </Tooltip>}
-              {(!!props.onTextDiagram || !!props.onTextImagine || !!props.onTextSpeak) && <Divider />}
-
-              {/* Bubble Copy */}
-              <Tooltip disableInteractive arrow placement='top' title='Copy Selection'>
-                <IconButton onClick={handleOpsCopy}>
-                  <ContentCopyIcon />
-                </IconButton>
-              </Tooltip>
-
-            </ButtonGroup>
-          </ClickAwayListener>
-        </Popper>
-      )}
-     {/* Translation Settings Modal */}
+        {/* Translation Settings Modal */}
       <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
           <Box sx={{
               maxWidth: 500,
@@ -1236,34 +1128,80 @@ export function ChatMessage(props: {
                 </Box>
            </Box>
         </Modal>
-    
-       <Box  sx={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            display: 'flex',
-            justifyContent: 'flex-end',
-            px: 1,
-        }}
-        >
-            <ButtonGroup size='sm' variant='plain'>
-            {fromAssistant && <Tooltip title='Translate'>
-              <IconButton onClick={handleTranslateText} disabled={translationInProgress} sx={{ color: 'primary' }}>
-                <FormatPaintTwoToneIcon/>
-                  </IconButton>
-            </Tooltip>}
-             <Tooltip title='Auto Translate'>
-                <IconButton color={isAutoTranslateEnabled ? 'primary' : undefined} onClick={handleAutoTranslateToggle}>
-                    <TelegramIcon  color={isAutoTranslateEnabled ? 'primary' : undefined}/>
-                </IconButton>
-             </Tooltip>
-             <Tooltip title='Translation Settings'>
-                <IconButton color='neutral' onClick={handleOpenTranslationSettings}>
-                  <SettingsIcon />
-              </IconButton>
-             </Tooltip>
-              </ButtonGroup>
-        </Box>
     </Box>
   );
+  
+    function selectApiKey() {
+        if (!translationSettings.apiKey) return null;
+        const apiKeys = translationSettings.apiKey.split(',');
+            if (apiKeys.length === 0) return null;
+        const selectedIndex = apiKeyIndex % apiKeys.length;
+           setApiKeyIndex(selectedIndex + 1);
+            return apiKeys[selectedIndex];
+        };
+
+     const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+            const selectedKey = selectApiKey();
+            if (!selectedKey) {
+              alert('No API key set')
+                callback(null);
+              return;
+            }
+           const formattedPrompt = translationSettings.systemPrompt
+                .replace("{sourceLang}", translationSettings.inlineLangSrc)
+                .replace("{targetLang}", translationSettings.inlineLangDst)
+                .replace("{text}", text);
+
+
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+              },
+             body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        threshold: "OFF"
+                    }
+                ]
+             }),
+            })
+            .then(response => response.json())
+              .then(data => {
+                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+                    const translatedText = data.candidates[0].content.parts[0].text;
+                      callback(translatedText);
+                   }
+                   else{
+                       callback(null);
+                   }
+               })
+                .catch(()=> {
+                    callback(null)
+                });
+            }, [translationSettings, selectApiKey]
+        );
 }
