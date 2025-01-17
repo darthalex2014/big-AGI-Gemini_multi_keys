@@ -516,60 +516,13 @@ export function ChatMessage(props: {
 
 
     // Translation
-
-    const handleTranslateText = React.useCallback(() => {
-      setTranslationInProgress(true);
-        const textToTranslate = messageFragmentsReduceText(messageFragments);
-      translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-               const newFragment = createTextContentFragment(translatedText);
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-            }
-                setTranslationInProgress(false);
-            });
-    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
-
-    const handleAutoTranslateToggle = React.useCallback(() => {
-        setIsAutoTranslateEnabled(prev => !prev);
-    }, []);
-
-    const handleOpenTranslationSettings = React.useCallback(() => {	
-      setTranslationSettingsOpen(true);
-    }, []);
-
-    const handleCloseTranslationSettings = React.useCallback(() => {
-      setTranslationSettingsOpen(false);
-    }, []);
-
-     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
-        localStorage.setItem(name, value)
-       }, []);
-
-
-        const selectApiKey = React.useCallback(() => {
+     const selectApiKey = React.useCallback(() => {
              if (!translationSettings.apiKey) return null;
             const apiKeys = translationSettings.apiKey.split(',');
              if (apiKeys.length === 0) return null;
             const selectedIndex = apiKeyIndex % apiKeys.length;
            setApiKeyIndex(selectedIndex + 1);
             return apiKeys[selectedIndex];
-
-     // Автоматический перевод
-     React.useEffect(() => {
-        if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
-            setTranslationInProgress(true);
-            const textToTranslate = messageFragmentsReduceText(messageFragments);
-            translateText(textToTranslate, (translatedText) => {
-                if (translatedText) {
-                    const newFragment = createTextContentFragment(translatedText);
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                }
-                  setTranslationInProgress(false);
-            });
-        }
-       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
         }, [apiKeyIndex, translationSettings.apiKey]);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
@@ -636,6 +589,52 @@ export function ChatMessage(props: {
                 });
             }, [translationSettings, selectApiKey]
         );
+
+    const handleTranslateText = React.useCallback(() => {
+      setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+      translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+            }
+                setTranslationInProgress(false);
+            });
+    }, [messageFragments, onMessageFragmentReplace, messageId, contentOrVoidFragments, translateText]);
+
+    const handleAutoTranslateToggle = React.useCallback(() => {
+        setIsAutoTranslateEnabled(prev => !prev);
+    }, []);
+
+    const handleOpenTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(true);
+    }, []);
+
+    const handleCloseTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(false);
+    }, []);
+
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
+
+     // Автоматический перевод
+     React.useEffect(() => {
+        if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
+            setTranslationInProgress(true);
+            const textToTranslate = messageFragmentsReduceText(messageFragments);
+            translateText(textToTranslate, (translatedText) => {
+                if (translatedText) {
+                    const newFragment = createTextContentFragment(translatedText);
+                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                }
+                  setTranslationInProgress(false);
+            });
+        }
+       }, [isAutoTranslateEnabled, fromAssistant, messagePendingIncomplete, contentOrVoidFragments, messageFragments, onMessageFragmentReplace, messageId, translationInProgress, translateText]);
+
 
 
   // Blocks renderer
@@ -962,7 +961,7 @@ export function ChatMessage(props: {
               <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
               Copy
             </MenuItem>
-              {/* Starred */}
+            {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
                 <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
