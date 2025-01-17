@@ -593,15 +593,20 @@ export function ChatMessage(props: {
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-        translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-               const newFragment = createTextContentFragment(translatedText);
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+         translateText(textToTranslate, (translatedText) => {
+                if (translatedText) {
+                  if(translationSettings.isInlineTranslate) {
+                        const newFragment = createTextContentFragment(`<span data-original-text="${textToTranslate}" style="color: ${translationSettings.inlineStyle};">${translatedText}</span>`);
+                           onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                    } else {
+                         const newFragment = createTextContentFragment(translatedText);
+                       onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                    }
             }
              setTranslationInProgress(false);
-            handleCloseOpsMenu();
+             handleCloseOpsMenu();
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu, translationSettings.inlineStyle, translationSettings.isInlineTranslate]);
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -1087,16 +1092,27 @@ export function ChatMessage(props: {
               justifyContent: 'center',
             }}>
           <Box sx={{
-              maxWidth: 700,
+              maxWidth: 600,
               bgcolor: 'background.surface',
               p: 2,
               borderRadius: 'md'
           }}>
               <Typography level='h4' sx={{mb: 2}}>Translation settings</Typography>
-
+               <FormControl sx={{mb: 2, display: 'flex', flexDirection: 'row', alignItems: 'center' , gap: 1,}}>
+                     <FormLabel sx={{flex: 1}}>Inline Translate:</FormLabel>
+                   <Switch
+                        checked={translationSettings.isInlineTranslate}
+                        onChange={(event) => {
+                          handleTranslationSettingsChange(event);
+                          setTranslationSettings(prev => ({ ...prev, isInlineTranslate: event.target.checked }));
+                         localStorage.setItem("isInlineTranslate", event.target.checked.toString())
+                        }}
+                        name="isInlineTranslate"
+                     />
+                </FormControl>
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '120px' }} />
+                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1123,7 +1139,7 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '200px' }}/>
+                   <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }}/>
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
