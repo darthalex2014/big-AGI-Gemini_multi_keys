@@ -1081,13 +1081,9 @@ export function ChatMessage(props: {
         </CloseablePopup>
       )}
        {/* Translation Settings Modal */}
-        <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings} sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
+        <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
           <Box sx={{
-              maxWidth: 1000, // Увеличиваем ширину модального окна
+              maxWidth: 1000,
               bgcolor: 'background.surface',
               p: 2,
               borderRadius: 'md'
@@ -1096,7 +1092,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)'  sx={{maxHeight: '4em', overflowY: 'scroll', scrollbarWidth: 'thin'}}/>
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '120px', overflowY: 'auto', scrollbarWidth: 'thin' }} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1123,7 +1119,7 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '4em', overflowY: 'scroll', scrollbarWidth: 'thin'}}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '200px', overflowY: 'scroll', scrollbarWidth: 'thin' }}/>
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
