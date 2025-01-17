@@ -1081,7 +1081,11 @@ export function ChatMessage(props: {
         </CloseablePopup>
       )}
        {/* Translation Settings Modal */}
-        <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings}>
+        <Modal open={translationSettingsOpen} onClose={handleCloseTranslationSettings} sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
           <Box sx={{
               maxWidth: 500,
               bgcolor: 'background.surface',
@@ -1092,7 +1096,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)'/>
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)'  sx={{maxHeight: '4em', overflowY: 'auto'}}/>
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1119,7 +1123,7 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '4em', overflowY: 'auto'}}/>
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
