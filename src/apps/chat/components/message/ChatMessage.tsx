@@ -32,7 +32,10 @@ import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SettingsIcon from '@mui/icons-material/Settings';
+
+
 import { ModelVendorAnthropic } from '~/modules/llms/vendors/anthropic/anthropic.vendor';
+
 import { AnthropicIcon } from '~/common/components/icons/vendors/AnthropicIcon';
 import { ChatBeamIcon } from '~/common/components/icons/ChatBeamIcon';
 import { CloseablePopup } from '~/common/components/CloseablePopup';
@@ -47,6 +50,7 @@ import { createTextContentFragment, DMessageFragment, DMessageFragmentId, update
 import { useFragmentBuckets } from '~/common/stores/chat/hooks/useFragmentBuckets';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
 import { useUXLabsStore } from '~/common/state/store-ux-labs';
+
 import { BlockOpContinue } from './BlockOpContinue';
 import { ContentFragments } from './fragments-content/ContentFragments';
 import { DocumentAttachmentFragments } from './fragments-attachment-doc/DocumentAttachmentFragments';
@@ -622,13 +626,13 @@ export function ChatMessage(props: {
      React.useEffect(() => {
         if (isAutoTranslateEnabled && fromAssistant && !translationInProgress && !messagePendingIncomplete && contentOrVoidFragments.length > 0) {
             const textToTranslate = messageFragmentsReduceText(messageFragments);
-            if (translatedMessageRef.current === textToTranslate) return;
+             if (translatedMessageRef.current === textToTranslate) return;
             setTranslationInProgress(true);
             translateText(textToTranslate, (translatedText) => {
                 if (translatedText) {
                     const newFragment = createTextContentFragment(translatedText);
                     onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                    translatedMessageRef.current = textToTranslate;
+                     translatedMessageRef.current = textToTranslate;
                 }
                   setTranslationInProgress(false);
             });
