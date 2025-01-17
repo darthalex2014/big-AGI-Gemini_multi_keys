@@ -411,6 +411,140 @@ export function ChatMessage(props: {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
 
+    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
+   const [translationSettings, setTranslationSettings] = React.useState({
+        apiKey: localStorage.getItem("apiKey") || "",
+        languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
+        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+        inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
+        systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
+         inlineMode: localStorage.getItem("inlineMode") === 'true' || false, // новое состояние
+    });
+    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
+    const [translationInProgress, setTranslationInProgress] = React.useState(false);
+     
+    const selectApiKey = React.useCallback(() => {
+             if (!translationSettings.apiKey) return null;
+            const apiKeys = translationSettings.apiKey.split(',');
+             if (apiKeys.length === 0) return null;
+            const selectedIndex = apiKeyIndex % apiKeys.length;
+           setApiKeyIndex(selectedIndex + 1);
+            return apiKeys[selectedIndex];
+        }, [apiKeyIndex, translationSettings.apiKey]);
+
+       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+            const selectedKey = selectApiKey();
+            if (!selectedKey) {
+              alert('No API key set')
+                callback(null);
+              return;
+            }
+           const formattedPrompt = translationSettings.systemPrompt
+                .replace("{sourceLang}", translationSettings.inlineLangSrc)
+                .replace("{targetLang}", translationSettings.inlineLangDst)
+                .replace("{text}", text);
+
+
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+              },
+             body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        threshold: "OFF"
+                    }
+                ]
+             }),
+            })
+            .then(response => response.json())
+              .then(data => {
+                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+                    const translatedText = data.candidates[0].content.parts[0].text;
+                      callback(translatedText);
+                   }
+                   else{
+                       callback(null);
+                   }
+               })
+                .catch(()=> {
+                    callback(null)
+                });
+            }, [translationSettings, selectApiKey]
+        );
+
+
+      const handleTranslateText = React.useCallback(() => {
+        setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+        translateText(textToTranslate, (translatedText) => {
+           setTranslationInProgress(false);
+           handleCloseOpsMenu();
+          if (translatedText) {
+            if (translationSettings.inlineMode) {
+                const newNode = document.createElement("span");
+                // Разбивка перевода на строки
+                const translation = translatedText.replace(/\n/g, "<br>");
+                newNode.innerHTML = translation;
+                newNode.style.color = translationSettings.inlineStyle;
+                 
+               
+                   if (contextMenuAnchor) {
+                        const range =  window.getSelection()?.getRangeAt(0);
+                      if (range) {
+                        range.deleteContents();
+                        range.insertNode(newNode);
+                    }
+                  }
+            
+            }
+            else {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+            }
+          }
+        });
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, translationSettings.inlineStyle, handleCloseOpsMenu]);
+
+
+     const handleOpenTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(true);
+    }, []);
+
+    const handleCloseTranslationSettings = React.useCallback(() => {
+      setTranslationSettingsOpen(false);
+    }, []);
+
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
 
   // Context Menu
 
@@ -593,20 +727,15 @@ export function ChatMessage(props: {
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-         translateText(textToTranslate, (translatedText) => {
-                if (translatedText) {
-                  if(translationSettings.isInlineTranslate) {
-                        const newFragment = createTextContentFragment(`<span data-original-text="${textToTranslate}" style="color: ${translationSettings.inlineStyle};">${translatedText}</span>`);
-                           onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                    } else {
-                         const newFragment = createTextContentFragment(translatedText);
-                       onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                    }
+        translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
              setTranslationInProgress(false);
-             handleCloseOpsMenu();
+            handleCloseOpsMenu();
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu, translationSettings.inlineStyle, translationSettings.isInlineTranslate]);
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -1098,18 +1227,7 @@ export function ChatMessage(props: {
               borderRadius: 'md'
           }}>
               <Typography level='h4' sx={{mb: 2}}>Translation settings</Typography>
-               <FormControl sx={{mb: 2, display: 'flex', flexDirection: 'row', alignItems: 'center' , gap: 1,}}>
-                     <FormLabel sx={{flex: 1}}>Inline Translate:</FormLabel>
-                   <Switch
-                        checked={translationSettings.isInlineTranslate}
-                        onChange={(event) => {
-                          handleTranslationSettingsChange(event);
-                          setTranslationSettings(prev => ({ ...prev, isInlineTranslate: event.target.checked }));
-                         localStorage.setItem("isInlineTranslate", event.target.checked.toString())
-                        }}
-                        name="isInlineTranslate"
-                     />
-                </FormControl>
+
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
                    <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }} />
@@ -1136,10 +1254,13 @@ export function ChatMessage(props: {
                   <FormLabel>Translation Color:</FormLabel>
                   <Input type="color" name="inlineStyle" value={translationSettings.inlineStyle} onChange={handleTranslationSettingsChange} />
                 </FormControl>
-
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                   <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }}/>
+                   <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin'}}/>
+                </FormControl>
+                <FormControl sx={{mb: 2, display: 'flex', alignItems: 'center'}}>
+                     <FormLabel sx={{flex: 1, mr: 1}}>Inline translation:</FormLabel>
+                     <Switch name="inlineMode" checked={translationSettings.inlineMode} onChange={(event) => handleTranslationSettingsChange(event as any)} />
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
