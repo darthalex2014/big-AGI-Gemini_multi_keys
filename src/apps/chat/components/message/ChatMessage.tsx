@@ -16,6 +16,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ForkRightIcon from '@mui/icons-material/ForkRight';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintOutlined';
+import FormatPaintTwoToneIcon from '@mui/icons-material/FormatPaintTwoTone';
 import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -526,7 +527,7 @@ export function ChatMessage(props: {
             }
                 setTranslationInProgress(false);
             });
-    }, [messageFragments, onMessageFragmentReplace, messageId, translateText]);
+    }, [messageFragments, onMessageFragmentReplace, messageId, translateText, contentOrVoidFragments]);
 
     const handleAutoTranslateToggle = React.useCallback(() => {
         setIsAutoTranslateEnabled(prev => !prev);
