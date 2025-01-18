@@ -181,10 +181,12 @@ export function ChatMessage(props: {
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
-         inlineMode: localStorage.getItem("inlineMode") === 'true' || false, // новое состояние
+       inlineMode: localStorage.getItem('inlineMode') === 'true' || false,
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
+    const [translatedText, setTranslatedText] = React.useState<string|null>(null);
+    const [originalText, setOriginalText] = React.useState<string|null>(null);
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -412,20 +414,22 @@ export function ChatMessage(props: {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
 
-  // Context Menu
-  const removeContextAnchor = React.useCallback(() => {
-      if (contextMenuAnchor) {
-        try {
-          document.body.removeChild(contextMenuAnchor);
-        } catch (e) {
-            // ignore...
-        }
-      }
-    }, [contextMenuAnchor]);
 
-    const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
-      event.stopPropagation();
-      event.preventDefault();
+  // Context Menu
+
+  const removeContextAnchor = React.useCallback(() => {
+    if (contextMenuAnchor) {
+      try {
+        document.body.removeChild(contextMenuAnchor);
+      } catch (e) {
+        // ignore...
+      }
+    }
+  }, [contextMenuAnchor]);
+
+  const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
+    event.stopPropagation();
+    event.preventDefault();
 
     // remove any stray anchor
     removeContextAnchor();
@@ -439,80 +443,82 @@ export function ChatMessage(props: {
 
     setContextMenuAnchor(anchorEl);
     setSelText(selectedText);
-    }, [removeContextAnchor]);
+  }, [removeContextAnchor]);
 
-    const closeContextMenu = React.useCallback(() => {
-      // window.getSelection()?.removeAllRanges?.();
-      removeContextAnchor();
-      setContextMenuAnchor(null);
-      setSelText(null);
-    }, [removeContextAnchor]);
+  const closeContextMenu = React.useCallback(() => {
+    // window.getSelection()?.removeAllRanges?.();
+    removeContextAnchor();
+    setContextMenuAnchor(null);
+    setSelText(null);
+  }, [removeContextAnchor]);
 
-    const handleContextMenu = React.useCallback((event: MouseEvent) => {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const selectedText = range.toString().trim();
-        if (selectedText.length > 0)
-           openContextMenu(event, selectedText);
-      }
-    }, [openContextMenu]);
+  const handleContextMenu = React.useCallback((event: MouseEvent) => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString().trim();
+      if (selectedText.length > 0)
+        openContextMenu(event, selectedText);
+    }
+  }, [openContextMenu]);
 
 
   // Bubble
 
-    const closeBubble = React.useCallback((anchorEl?: HTMLElement) => {
-      window.getSelection()?.removeAllRanges?.();
-        try {
-          const anchor = anchorEl || bubbleAnchor;
-            anchor && document.body.removeChild(anchor);
-      } catch (e) {
-         // ignore...
-      }
-        setBubbleAnchor(null);
-        setSelText(null);
-      }, [bubbleAnchor]);
+  const closeBubble = React.useCallback((anchorEl?: HTMLElement) => {
+    window.getSelection()?.removeAllRanges?.();
+    try {
+      const anchor = anchorEl || bubbleAnchor;
+      anchor && document.body.removeChild(anchor);
+    } catch (e) {
+      // ignore...
+    }
+    setBubbleAnchor(null);
+    setSelText(null);
+  }, [bubbleAnchor]);
 
-    // restore blocksRendererRef
-    const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
-      // check for selection
+  // restore blocksRendererRef
+  const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
+    // check for selection
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount <= 0) return;
+
+    // check for enough selection
+    const selectionText = selection.toString();
+    if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
+
+    // check for the selection being inside the blocks renderer (core of the message)
+    const selectionRange = selection.getRangeAt(0);
+    const blocksElement = blocksRendererRef.current;
+    if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
+
+    const rangeRects = selectionRange.getClientRects();
+    if (rangeRects.length <= 0) return;
+
+    const firstRect = rangeRects[0];
+    const anchorEl = document.createElement('div');
+    anchorEl.style.position = 'fixed';
+    anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
+    anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
+    document.body.appendChild(anchorEl);
+    anchorEl.setAttribute('role', 'dialog');
+
+    // auto-close logic on unselect
+    const closeOnUnselect = () => {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount <= 0) return;
-      // check for enough selection
-        const selectionText = selection.toString();
-      if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
-
-      // check for the selection being inside the blocks renderer (core of the message)
-      const selectionRange = selection.getRangeAt(0);
-      const blocksElement = blocksRendererRef.current;
-      if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
-
-      const rangeRects = selectionRange.getClientRects();
-      if (rangeRects.length <= 0) return;
-
-      const firstRect = rangeRects[0];
-      const anchorEl = document.createElement('div');
-      anchorEl.style.position = 'fixed';
-      anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
-      anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
-      document.body.appendChild(anchorEl);
-      anchorEl.setAttribute('role', 'dialog');
-
-      // auto-close logic on unselect
-       const closeOnUnselect = () => {
-       const selection = window.getSelection();
-        if (!selection || selection.toString().trim() === '') {
-          closeBubble(anchorEl);
+      if (!selection || selection.toString().trim() === '') {
+        closeBubble(anchorEl);
         document.removeEventListener('selectionchange', closeOnUnselect);
       }
-       };
-      document.addEventListener('selectionchange', closeOnUnselect);
+    };
+    document.addEventListener('selectionchange', closeOnUnselect);
 
-      setBubbleAnchor(anchorEl);
-        setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
-    }, [closeBubble]);
+    setBubbleAnchor(anchorEl);
+    setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
+  }, [closeBubble]);
 
-       const selectApiKey = React.useCallback(() => {
+
+     const selectApiKey = React.useCallback(() => {
              if (!translationSettings.apiKey) return null;
             const apiKeys = translationSettings.apiKey.split(',');
              if (apiKeys.length === 0) return null;
@@ -590,34 +596,25 @@ export function ChatMessage(props: {
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
+         if (translationSettings.inlineMode)
+        {
+         setOriginalText(textToTranslate);
+        }
         translateText(textToTranslate, (translatedText) => {
-           setTranslationInProgress(false);
-           handleCloseOpsMenu();
           if (translatedText) {
-            if (translationSettings.inlineMode) {
-                const newNode = document.createElement("span");
-                // Разбивка перевода на строки
-                const translation = translatedText.replace(/\n/g, "<br>");
-                newNode.innerHTML = translation;
-                newNode.style.color = translationSettings.inlineStyle;
-                 
-               
-                   if (contextMenuAnchor) {
-                        const range =  window.getSelection()?.getRangeAt(0);
-                      if (range) {
-                        range.deleteContents();
-                        range.insertNode(newNode);
-                    }
-                  }
-            
-            }
-            else {
                const newFragment = createTextContentFragment(translatedText);
+             if (translationSettings.inlineMode)
+                {
+                  setTranslatedText(translatedText)
+               } else {
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+              }
             }
-          }
+             setTranslationInProgress(false);
+             handleCloseOpsMenu();
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, translationSettings.inlineStyle, handleCloseOpsMenu]);
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
+
 
     const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
@@ -851,7 +848,8 @@ export function ChatMessage(props: {
             disableMarkdownText={disableMarkdown || fromUser /* User messages are edited as text. Try to have them in plain text. NOTE: This may bite. */}
             showUnsafeHtmlCode={props.showUnsafeHtmlCode}
             enhanceCodeBlocks={labsEnhanceCodeBlocks}
-
+             translatedText={translationSettings.inlineMode && translatedText}
+             originalText = {translationSettings.inlineMode && originalText}
             textEditsState={textContentEditState}
             setEditedText={(!props.onMessageFragmentReplace || messagePendingIncomplete) ? undefined : handleEditSetText}
             onEditsApply={handleApplyAllEdits}
@@ -1111,7 +1109,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin' }} />
+                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px'}} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1135,14 +1133,20 @@ export function ChatMessage(props: {
                   <FormLabel>Translation Color:</FormLabel>
                   <Input type="color" name="inlineStyle" value={translationSettings.inlineStyle} onChange={handleTranslationSettingsChange} />
                 </FormControl>
+
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                   <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin'}}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px' }}/>
                 </FormControl>
-                <FormControl sx={{mb: 2, display: 'flex', alignItems: 'center'}}>
-                     <FormLabel sx={{flex: 1, mr: 1}}>Inline translation:</FormLabel>
-                     <Switch name="inlineMode" checked={translationSettings.inlineMode} onChange={(event) => handleTranslationSettingsChange(event as any)} />
-                </FormControl>
+               <FormControl sx={{mb: 2}}>
+                   <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
+                      <FormLabel>Inline Mode:</FormLabel>
+                       <Switch  name="inlineMode" checked={translationSettings.inlineMode} onChange={(e)=>{
+                          setTranslationSettings(prevState => ({ ...prevState, inlineMode: e.target.checked }));
+                           localStorage.setItem('inlineMode', String(e.target.checked))
+                    }}/>
+                    </Box>
+                  </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
                 </Box>
