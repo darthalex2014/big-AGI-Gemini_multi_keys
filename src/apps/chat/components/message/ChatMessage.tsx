@@ -598,12 +598,7 @@ export function ChatMessage(props: {
          translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-             if (translationSettings.inlineMode)
-                {
-                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
-               } else {
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-              }
+             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, translationSettings.inlineMode);
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
