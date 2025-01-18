@@ -592,30 +592,22 @@ export function ChatMessage(props: {
         );
 
 
-    const handleTranslateText = React.useCallback(() => {
+   const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-         if (translationSettings.inlineMode)
-        {
-          
-            translateText(textToTranslate, (translatedText) => {
-                  if (translatedText) {
-                      const newFragment = createTextContentFragment(translatedText);
-                      onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                   }
-                   setTranslationInProgress(false);
-                   handleCloseOpsMenu();
-             });
-        } else {
-            translateText(textToTranslate, (translatedText) => {
-              if (translatedText) {
-                   const newFragment = createTextContentFragment(translatedText);
+         translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+             const newFragment = createTextContentFragment(translatedText);
+             if (translationSettings.inlineMode)
+                {
+                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true );
+               } else {
                     onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-                }
-                 setTranslationInProgress(false);
-                 handleCloseOpsMenu();
-            });
-        }
+              }
+            }
+             setTranslationInProgress(false);
+             handleCloseOpsMenu();
+        });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
 
 
