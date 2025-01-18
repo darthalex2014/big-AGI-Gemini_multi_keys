@@ -124,16 +124,6 @@ export type ChatMessageTextPartEditState = { [fragmentId: DMessageFragmentId]: s
 export const ChatMessageMemo = React.memo(ChatMessage);
 
 
-// Создаем ref вне компонента ChatMessage
-const translationSettingsRef = React.useRef({
-    apiKey: localStorage.getItem("apiKey") || "",
-    languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
-    inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
-    inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-    systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-});
-
-
 /**
  * The Message component is a customizable chat message UI component that supports
  * different roles (user, assistant, and system), text editing, syntax highlighting,
@@ -173,6 +163,14 @@ export function ChatMessage(props: {
   onTextSpeak?: (text: string) => Promise<void>,
   sx?: SxProps,
 }) {
+  // ref for translation settings
+    const translationSettingsRef = React.useRef({
+        apiKey: localStorage.getItem("apiKey") || "",
+        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
+        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+         systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
+    });
 
   // state
   const blocksRendererRef = React.useRef<HTMLDivElement>(null);
@@ -637,7 +635,7 @@ export function ChatMessage(props: {
       setTranslationSettingsOpen(false);
     }, []);
 
-     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+ const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
          translationSettingsRef.current = { ...translationSettingsRef.current, [name]: value };
          localStorage.setItem(name, value);
