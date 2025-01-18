@@ -250,6 +250,7 @@ export function ChatMessage(props: {
 }) {
 
   // state
+  const [translationInProgress, setTranslationInProgress] = React.useState(false);
   const blocksRendererRef = React.useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = React.useState(false);
   const [selText, setSelText] = React.useState<string | null>(null);
