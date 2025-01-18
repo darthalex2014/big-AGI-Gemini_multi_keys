@@ -1070,7 +1070,7 @@ export function ChatMessage(props: {
             {/* Translation */}
             <ListDivider />
             <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
-                <ListItemDecorator><FormatPaintOutlined/></ListItemDecorator>
+                <ListItemDecorator><FormatPaintOutlinedIcon /></ListItemDecorator>
                 Translate {translationInProgress &&  <CircularProgress size='sm' />}
               </MenuItem>
              <MenuItem onClick={handleOpenTranslationSettings}>
