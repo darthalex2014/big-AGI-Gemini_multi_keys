@@ -175,11 +175,11 @@ export function ChatMessage(props: {
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
    const [translationSettings, setTranslationSettings] = React.useState({
         apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
+        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
         inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
-        systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
+        systemPrompt: localStorage.getItem("systemPrompt") || "Выдавай ТОЛЬКО Переведенный Текст!\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
@@ -639,7 +639,62 @@ export function ChatMessage(props: {
         );
 
 
-    const handleOpenTranslationSettings = React.useCallback(() => {
+    const replaceSelectedTextWithTranslation = React.useCallback((translation: string) => {
+        if (selRange) {
+            const newNode = document.createElement("span");
+            newNode.innerHTML = translation; // Вставка текста с переносами
+            newNode.style.color = translationSettings.inlineStyle;
+            newNode.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
+            const originalNode = selRange.extractContents();
+             const wrapperNode = document.createElement("span");
+            wrapperNode.appendChild(originalNode)
+             wrapperNode.addEventListener('mouseenter', () => {
+                newNode.style.display = 'inline';
+                 wrapperNode.replaceChildren(originalNode, newNode);
+            })
+             wrapperNode.addEventListener('mouseleave', () => {
+                newNode.style.display = 'none'
+                 wrapperNode.replaceChildren(originalNode);
+            })
+
+            selRange.insertNode(wrapperNode);
+            selRange.collapse();
+            setSelRange(null)
+        }
+    }, [translationSettings.inlineStyle, selRange]);
+
+    const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setTranslationInProgress(true);
+       const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const selectedText = selection.toString();
+           setSelRange(selection.getRangeAt(0).cloneRange());
+           translateText(selectedText, (translatedText) => {
+              if(translatedText){
+                   replaceSelectedTextWithTranslation(translatedText);
+              }
+             setTranslationInProgress(false);
+           })
+          handleCloseOpsMenu();
+           closeContextMenu();
+            closeBubble();
+        }
+    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
+
+
+    const handleOpsCopy = (e: React.MouseEvent) => {
+       const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+             setSelRange(selection.getRangeAt(0).cloneRange())
+        }
+       copyToClipboard(textSubject, 'Text');
+        e.preventDefault();
+        handleCloseOpsMenu();
+        closeContextMenu();
+        closeBubble();
+    };
+   const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
     }, []);
 
@@ -1138,7 +1193,6 @@ export function ChatMessage(props: {
                <FormControl sx={{mb: 2}}>
                    <FormLabel>Language Model:</FormLabel>
                   <Select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
-                      <Option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</Option>
                       <Option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</Option>
                  </Select>
                 </FormControl>
