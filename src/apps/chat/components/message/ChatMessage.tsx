@@ -1118,7 +1118,8 @@ export function ChatMessage(props: {
                       value={translationSettings.apiKey}
                       onChange={handleTranslationSettingsChange}
                       placeholder='Enter your API key(s)'
-                      minRows={3} // задаем высоту в строках
+                      minRows={4}
+                      maxRows={4}
                   />
               </FormControl>
 
@@ -1152,6 +1153,7 @@ export function ChatMessage(props: {
                       onChange={handleTranslationSettingsChange}
                       placeholder='System Prompt'
                       minRows={4}
+                      maxRows={4}
                       />
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
