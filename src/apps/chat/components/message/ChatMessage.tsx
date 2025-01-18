@@ -1117,9 +1117,7 @@ export function ChatMessage(props: {
                       placeholder='Enter your API key(s)'
                       minRows={3}
                       sx={{
-                          maxHeight: '6rem', /* 3 строки * 1.5rem высоты */
-                          overflowY: 'auto',
-                          resize: 'vertical',
+                          lineHeight: '1.5rem',
                       }}
                   />
               </FormControl>
@@ -1149,10 +1147,8 @@ export function ChatMessage(props: {
                       placeholder='System Prompt'
                       minRows={4}
                         sx={{
-                          maxHeight: '7.5rem', /* 4 строки * 1.5rem высоты */
-                            overflowY: 'auto',
-                           resize: 'vertical',
-                         }}
+                            lineHeight: '1.5rem',
+                        }}
                       />
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
