@@ -522,32 +522,33 @@ export function ChatMessage(props: {
             return apiKeys[selectedIndex];
         }, [apiKeyIndex, translationSettings.apiKey]);
 
- const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, attempt = 0) => {
-    const selectedKey = selectApiKey();
-    if (!selectedKey) {
-        alert('No API key set');
-        callback(null);
-        return;
-    }
-    const formattedPrompt = translationSettings.systemPrompt
-        .replace("{sourceLang}", translationSettings.inlineLangSrc)
-        .replace("{targetLang}", translationSettings.inlineLangDst)
-        .replace("{text}", text);
+       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+            const selectedKey = selectApiKey();
+            if (!selectedKey) {
+              alert('No API key set')
+                callback(null);
+              return;
+            }
+           const formattedPrompt = translationSettings.systemPrompt
+                .replace("{sourceLang}", translationSettings.inlineLangSrc)
+                .replace("{targetLang}", translationSettings.inlineLangDst)
+                .replace("{text}", text);
 
-    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": selectedKey,
-        },
-        body: JSON.stringify({
-            contents: [{
-                role: "user",
-                parts: [{
-                    text: formattedPrompt
-                }]
-            }],
-             safetySettings: [{
+
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+              },
+             body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
                         category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
                         threshold: "OFF"
                     },
@@ -568,39 +569,23 @@ export function ChatMessage(props: {
                         threshold: "OFF"
                     }
                 ]
-        }),
-    })
-      .then(response => {
-                if (response.status === 429 || response.status === 400) {
-                    if (attempt < 3) { // ограничение попыток
-                         setTranslationInProgress(true);
-                        setTimeout(() => { // задержка перед повторной попыткой
-                            translateText(text, callback, attempt + 1);
-                        }, 10);
-                        return null;
-                    } else {
-                       setTranslationInProgress(false);
-                        console.error('Max translation attempts reached.');
-                        callback(null);
-                        return null;
-                   }
-                   }
-                    return response.json()
-             })
-        .then(data => {
-                 if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+             }),
+            })
+            .then(response => response.json())
+              .then(data => {
+                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
                     const translatedText = data.candidates[0].content.parts[0].text;
-                    callback(translatedText);
-                } else {
-                    callback(null);
-                  }
-            setTranslationInProgress(false);
-        })
-        .catch(() => {
-            setTranslationInProgress(false);
-             callback(null)
-          });
-}, [translationSettings, selectApiKey]);
+                      callback(translatedText);
+                   }
+                   else{
+                       callback(null);
+                   }
+               })
+                .catch(()=> {
+                    callback(null)
+                });
+            }, [translationSettings, selectApiKey]
+        );
 
 
     const handleTranslateText = React.useCallback(() => {
@@ -1130,8 +1115,12 @@ export function ChatMessage(props: {
                       value={translationSettings.apiKey}
                       onChange={handleTranslationSettingsChange}
                       placeholder='Enter your API key(s)'
-                      minRows={4}
-                      maxRows={4}
+                      minRows={3}
+                      sx={{
+                          maxHeight: '6rem', /* 3 строки * 1.5rem высоты */
+                          overflowY: 'auto',
+                          resize: 'vertical',
+                      }}
                   />
               </FormControl>
 
@@ -1159,7 +1148,11 @@ export function ChatMessage(props: {
                       onChange={handleTranslationSettingsChange}
                       placeholder='System Prompt'
                       minRows={4}
-                      maxRows={4}
+                        sx={{
+                          maxHeight: '7.5rem', /* 4 строки * 1.5rem высоты */
+                            overflowY: 'auto',
+                           resize: 'vertical',
+                         }}
                       />
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
