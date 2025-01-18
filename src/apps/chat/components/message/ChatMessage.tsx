@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import TimeAgo from 'react-timeago';
 
 import type { SxProps } from '@mui/joy/styles/types';
-import { Box, Button, ButtonGroup, CircularProgress, Divider, IconButton, ListDivider, ListItem, ListItemButton, ListItemDecorator, Menu, MenuItem, Switch, Tooltip, Typography, Modal, ModalClose, Textarea, FormControl, FormLabel, Input } from '@mui/joy';
+import { Box, Button, ButtonGroup, CircularProgress, Divider, IconButton, ListDivider, ListItem, ListItemButton, ListItemDecorator, Menu, MenuItem, Switch, Tooltip, Typography, Modal, ModalClose, Textarea, FormControl, FormLabel, Input, Select, Option } from '@mui/joy';
 import { ClickAwayListener, Popper } from '@mui/base';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
@@ -167,6 +167,7 @@ export function ChatMessage(props: {
   const blocksRendererRef = React.useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = React.useState(false);
   const [selText, setSelText] = React.useState<string | null>(null);
+    const [selRange, setSelRange] = React.useState<Range | null>(null);
   const [bubbleAnchor, setBubbleAnchor] = React.useState<HTMLElement | null>(null);
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
@@ -305,13 +306,62 @@ export function ChatMessage(props: {
 
   const handleCloseOpsMenu = React.useCallback(() => setOpsMenuAnchor(null), []);
 
-  const handleOpsCopy = (e: React.MouseEvent) => {
-    copyToClipboard(textSubject, 'Text');
-    e.preventDefault();
-    handleCloseOpsMenu();
-    closeContextMenu();
-    closeBubble();
-  };
+    const handleOpsCopy = (e: React.MouseEvent) => {
+       const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+             setSelRange(selection.getRangeAt(0).cloneRange())
+        }
+       copyToClipboard(textSubject, 'Text');
+        e.preventDefault();
+        handleCloseOpsMenu();
+        closeContextMenu();
+        closeBubble();
+    };
+
+    const replaceSelectedTextWithTranslation = React.useCallback((translation: string) => {
+        if (selRange) {
+            const newNode = document.createElement("span");
+            newNode.innerHTML = translation; // Вставка текста с переносами
+            newNode.style.color = translationSettings.inlineStyle;
+            newNode.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
+            const originalNode = selRange.extractContents();
+             const wrapperNode = document.createElement("span");
+            wrapperNode.appendChild(originalNode)
+             wrapperNode.addEventListener('mouseenter', () => {
+                newNode.style.display = 'inline';
+                 wrapperNode.replaceChildren(originalNode, newNode);
+            })
+             wrapperNode.addEventListener('mouseleave', () => {
+                newNode.style.display = 'none'
+                 wrapperNode.replaceChildren(originalNode);
+            })
+
+            selRange.insertNode(wrapperNode);
+            selRange.collapse();
+            setSelRange(null)
+        }
+    }, [translationSettings.inlineStyle, selRange]);
+
+
+
+    const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
+        e.preventDefault();
+      setTranslationInProgress(true);
+       const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const selectedText = selection.toString();
+           setSelRange(selection.getRangeAt(0).cloneRange());
+           translateText(selectedText, (translatedText) => {
+              if(translatedText){
+                   replaceSelectedTextWithTranslation(translatedText);
+              }
+             setTranslationInProgress(false);
+           })
+          handleCloseOpsMenu();
+           closeContextMenu();
+            closeBubble();
+        }
+    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
 
   const handleOpsEditToggle = React.useCallback((e: React.MouseEvent) => {
     if (messagePendingIncomplete && !isEditingText) return; // don't allow editing while incomplete
@@ -473,44 +523,45 @@ export function ChatMessage(props: {
   }, [bubbleAnchor]);
 
   // restore blocksRendererRef
-  const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
-    // check for selection
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount <= 0) return;
+    const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
+        // check for selection
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount <= 0) return;
 
-    // check for enough selection
-    const selectionText = selection.toString();
-    if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
+        // check for enough selection
+        const selectionText = selection.toString();
+        if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
 
-    // check for the selection being inside the blocks renderer (core of the message)
-    const selectionRange = selection.getRangeAt(0);
-    const blocksElement = blocksRendererRef.current;
-    if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
+        // check for the selection being inside the blocks renderer (core of the message)
+        const selectionRange = selection.getRangeAt(0);
+        const blocksElement = blocksRendererRef.current;
+        if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
 
-    const rangeRects = selectionRange.getClientRects();
-    if (rangeRects.length <= 0) return;
+        const rangeRects = selectionRange.getClientRects();
+        if (rangeRects.length <= 0) return;
 
-    const firstRect = rangeRects[0];
-    const anchorEl = document.createElement('div');
-    anchorEl.style.position = 'fixed';
-    anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
-    anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
-    document.body.appendChild(anchorEl);
-    anchorEl.setAttribute('role', 'dialog');
+        const firstRect = rangeRects[0];
+        const anchorEl = document.createElement('div');
+        anchorEl.style.position = 'fixed';
+        anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
+        anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
+        document.body.appendChild(anchorEl);
+        anchorEl.setAttribute('role', 'dialog');
 
-    // auto-close logic on unselect
-    const closeOnUnselect = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.toString().trim() === '') {
-        closeBubble(anchorEl);
-        document.removeEventListener('selectionchange', closeOnUnselect);
-      }
-    };
-    document.addEventListener('selectionchange', closeOnUnselect);
+        // auto-close logic on unselect
+        const closeOnUnselect = () => {
+            const selection = window.getSelection();
+            if (!selection || selection.toString().trim() === '') {
+                closeBubble(anchorEl);
+                document.removeEventListener('selectionchange', closeOnUnselect);
+            }
+        };
+        document.addEventListener('selectionchange', closeOnUnselect);
 
-    setBubbleAnchor(anchorEl);
-    setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
-  }, [closeBubble]);
+        setBubbleAnchor(anchorEl);
+        setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
+    }, [closeBubble]);
+
 
 
      const selectApiKey = React.useCallback(() => {
@@ -586,20 +637,6 @@ export function ChatMessage(props: {
                 });
             }, [translationSettings, selectApiKey]
         );
-
-
-    const handleTranslateText = React.useCallback(() => {
-        setTranslationInProgress(true);
-        const textToTranslate = messageFragmentsReduceText(messageFragments);
-        translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-               const newFragment = createTextContentFragment(translatedText);
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-            }
-             setTranslationInProgress(false);
-            handleCloseOpsMenu();
-        });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -1067,16 +1104,16 @@ export function ChatMessage(props: {
                   : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Beam Edit<KeyStroke variant='outlined' combo='Ctrl + Shift + B' /></Box>}
             </MenuItem>
           )}
-            {/* Translation */}
+           {/* Translation */}
             <ListDivider />
-            <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
-                <ListItemDecorator><FormatPaintOutlinedIcon /></ListItemDecorator>
-                Translate {translationInProgress &&  <CircularProgress size='sm' />}
-              </MenuItem>
-             <MenuItem onClick={handleOpenTranslationSettings}>
-                <ListItemDecorator><SettingsIcon /></ListItemDecorator>
-                Translation settings
-             </MenuItem>
+          <MenuItem onClick={handleOpsTranslate} disabled={translationInProgress}>
+              <ListItemDecorator><FormatPaintOutlinedIcon /></ListItemDecorator>
+              Translate {translationInProgress &&  <CircularProgress size='sm' />}
+          </MenuItem>
+          <MenuItem onClick={handleOpenTranslationSettings}>
+              <ListItemDecorator><SettingsIcon /></ListItemDecorator>
+              Translation settings
+          </MenuItem>
         </CloseablePopup>
       )}
        {/* Translation Settings Modal */}
@@ -1100,10 +1137,10 @@ export function ChatMessage(props: {
 
                <FormControl sx={{mb: 2}}>
                    <FormLabel>Language Model:</FormLabel>
-                  <select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
-                      <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</option>
-                      <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
-                 </select>
+                  <Select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
+                      <Option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</Option>
+                      <Option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</Option>
+                 </Select>
                 </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1129,6 +1166,38 @@ export function ChatMessage(props: {
                 </Box>
            </Box>
         </Modal>
+         {/* Context (Right-click) Menu */}
+          {!!contextMenuAnchor && (
+              <CloseablePopup
+                  menu anchorEl={contextMenuAnchor} onClose={closeContextMenu}
+                  dense
+                  minWidth={220}
+                  placement='bottom-start'
+              >
+                   <MenuItem onClick={handleOpsCopy} sx={{ flex: 1, alignItems: 'center' }}>
+                      <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
+                      Copy
+                  </MenuItem>
+                  <MenuItem onClick={handleOpsTranslate} disabled={translationInProgress}>
+                      <ListItemDecorator><FormatPaintOutlinedIcon /></ListItemDecorator>
+                      Translate {translationInProgress &&  <CircularProgress size='sm' />}
+                  </MenuItem>
+                  {!!props.onTextDiagram && <ListDivider />}
+                  {!!props.onTextDiagram && <MenuItem onClick={handleOpsDiagram} disabled={!couldDiagram || props.isImagining}>
+                      <ListItemDecorator><AccountTreeOutlinedIcon /></ListItemDecorator>
+                      Auto-Diagram ...
+                  </MenuItem>}
+                  {!!props.onTextImagine && <MenuItem onClick={handleOpsImagine} disabled={!couldImagine || props.isImagining}>
+                      <ListItemDecorator>{props.isImagining ? <CircularProgress size='sm' /> : <FormatPaintOutlinedIcon />}</ListItemDecorator>
+                      Auto-Draw
+                  </MenuItem>}
+                  {!!props.onTextSpeak && <MenuItem onClick={handleOpsSpeak} disabled={!couldSpeak || props.isSpeaking}>
+                      <ListItemDecorator>{props.isSpeaking ? <CircularProgress size='sm' /> : <RecordVoiceOverOutlinedIcon />}</ListItemDecorator>
+                      Speak
+                  </MenuItem>}
+              </CloseablePopup>
+          )}
+
     </Box>
   );
 }
