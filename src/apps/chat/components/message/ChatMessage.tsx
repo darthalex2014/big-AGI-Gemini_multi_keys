@@ -595,20 +595,15 @@ export function ChatMessage(props: {
  const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-         translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-             const newFragment = createTextContentFragment(translatedText);
-             if (translationSettings.inlineMode)
-                {
-                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-               } else {
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-              }
+        translateText(textToTranslate, (translatedText) => {
+            if (translatedText) {
+                const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
             }
-             setTranslationInProgress(false);
-             handleCloseOpsMenu();
-        });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
+            setTranslationInProgress(false);
+            handleCloseOpsMenu();
+         });
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
