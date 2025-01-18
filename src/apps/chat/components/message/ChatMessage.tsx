@@ -514,13 +514,16 @@ export function ChatMessage(props: {
 
 
      const selectApiKey = React.useCallback(() => {
-             if (!translationSettings.apiKey) return null;
-            const apiKeys = translationSettings.apiKey.split(',');
-             if (apiKeys.length === 0) return null;
-            const selectedIndex = apiKeyIndex % apiKeys.length;
-           setApiKeyIndex(selectedIndex + 1);
-            return apiKeys[selectedIndex];
-        }, [apiKeyIndex, translationSettings.apiKey]);
+         if (!translationSettings.apiKey) return null;
+         const apiKeys = translationSettings.apiKey.split(',');
+         if (apiKeys.length === 0) return null;
+
+         // Генерируем случайный индекс
+         const randomIndex = Math.floor(Math.random() * apiKeys.length);
+
+         // Возвращаем ключ по случайному индексу
+         return apiKeys[randomIndex];
+     }, [translationSettings.apiKey]);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
@@ -573,32 +576,42 @@ export function ChatMessage(props: {
             })
             .then(response => response.json())
               .then(data => {
+                    if (data.error) {
+                        console.error('API error:', data.error);
+                         alert(`API Error: ${data.error.message}`);
+                          callback(null);
+                        return;
+                    }
                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
                     const translatedText = data.candidates[0].content.parts[0].text;
                       callback(translatedText);
                    }
                    else{
+                        console.error('Unexpected API response:', data);
+                       alert("Unexpected API response. Check console.");
                        callback(null);
                    }
                })
-                .catch(()=> {
+                .catch((error)=> {
+                    console.error('Fetch error:', error);
+                     alert(`Fetch Error: ${error.message}`);
                     callback(null)
                 });
             }, [translationSettings, selectApiKey]
         );
 
-
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
-        setOriginalMessage(messageFragmentsReduceText(messageFragments)); // сохраняем оригинал
         const textToTranslate = messageFragmentsReduceText(messageFragments);
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
                const newFragment = createTextContentFragment(translatedText);
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-            }
+               setTranslationInProgress(false);
+               handleCloseOpsMenu();
+            } else {
              setTranslationInProgress(false);
-            handleCloseOpsMenu();
+            }
         });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
