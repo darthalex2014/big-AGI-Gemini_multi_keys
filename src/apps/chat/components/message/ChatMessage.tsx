@@ -1102,7 +1102,7 @@ export function ChatMessage(props: {
               justifyContent: 'center',
             }}>
           <Box sx={{
-              maxWidth: 700,
+              maxWidth: 600,
               bgcolor: 'background.surface',
               p: 2,
               borderRadius: 'md'
@@ -1111,7 +1111,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '120px' }} />
+                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px'}} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1138,8 +1138,17 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '200px' }}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px' }}/>
                 </FormControl>
+                <FormControl sx={{mb: 2}}>
+                   <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
+                      <FormLabel>Inline Mode:</FormLabel>
+                       <Switch  name="inlineMode" checked={translationSettings.inlineMode} onChange={(e)=>{
+                          setTranslationSettings(prevState => ({ ...prevState, inlineMode: e.target.checked }));
+                           localStorage.setItem('inlineMode', String(e.target.checked))
+                     }}/>
+                    </Box>
+                  </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
                 </Box>
