@@ -123,32 +123,17 @@ export type ChatMessageTextPartEditState = { [fragmentId: DMessageFragmentId]: s
 
 export const ChatMessageMemo = React.memo(ChatMessage);
 
-// Создаем контекст
-const TranslationSettingsContext = React.createContext(null);
 
-// Создаем провайдер контекста
-const TranslationSettingsProvider = ({ children }) => {
-    const [translationSettings, setTranslationSettings] = React.useState(() => ({
-        apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
-        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
-        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-        systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-    }));
+// Создаем ref вне компонента ChatMessage
+const translationSettingsRef = React.useRef({
+    apiKey: localStorage.getItem("apiKey") || "",
+    languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
+    inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+    inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+    systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
+});
 
-    const updateTranslationSettings = React.useCallback((newSettings) => {
-            setTranslationSettings(newSettings);
-            for (const key in newSettings) {
-              localStorage.setItem(key, newSettings[key])
-            }
-        }, []);
 
-    return (
-        <TranslationSettingsContext.Provider value={{ translationSettings, updateTranslationSettings }}>
-            {children}
-        </TranslationSettingsContext.Provider>
-    );
-};
 /**
  * The Message component is a customizable chat message UI component that supports
  * different roles (user, assistant, and system), text editing, syntax highlighting,
@@ -201,8 +186,6 @@ export function ChatMessage(props: {
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
     const [originalMessage, setOriginalMessage] = React.useState<string | null>(null); // состояние для хранения оригинала
 
-
-    const { translationSettings, updateTranslationSettings } = React.useContext(TranslationSettingsContext);
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
     adjContentScaling: adjustContentScaling(state.contentScaling, props.adjustContentScaling),
@@ -534,8 +517,8 @@ export function ChatMessage(props: {
 
 
      const selectApiKey = React.useCallback(() => {
-         if (!translationSettings.apiKey) return null;
-         const apiKeys = translationSettings.apiKey.split(',');
+         if (!translationSettingsRef.current.apiKey) return null;
+         const apiKeys = translationSettingsRef.current.apiKey.split(',');
          if (apiKeys.length === 0) return null;
 
          // Генерируем случайный индекс
@@ -543,7 +526,7 @@ export function ChatMessage(props: {
 
          // Возвращаем ключ по случайному индексу
          return apiKeys[randomIndex];
-     }, [translationSettings.apiKey]);
+     }, []);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
@@ -552,13 +535,13 @@ export function ChatMessage(props: {
                 callback(null);
               return;
             }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
+           const formattedPrompt = translationSettingsRef.current.systemPrompt
+                .replace("{sourceLang}", translationSettingsRef.current.inlineLangSrc)
+                .replace("{targetLang}", translationSettingsRef.current.inlineLangDst)
                 .replace("{text}", text);
 
 
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettingsRef.current.languageModel}:generateContent`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -617,7 +600,7 @@ export function ChatMessage(props: {
                      alert(`Fetch Error: ${error.message}`);
                     callback(null)
                 });
-            }, [translationSettings, selectApiKey]
+            }, [selectApiKey]
         );
 
     const handleTranslateText = React.useCallback(() => {
@@ -625,7 +608,7 @@ export function ChatMessage(props: {
         const textToTranslate = messageFragmentsReduceText(messageFragments);
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
-               setOriginalMessage(textToTranslate);
+               setOriginalMessage(textToTranslate); // сохраняем оригинал только при успешном переводе
                const newFragment = createTextContentFragment(translatedText);
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
                setTranslationInProgress(false);
@@ -654,10 +637,12 @@ export function ChatMessage(props: {
       setTranslationSettingsOpen(false);
     }, []);
 
-    const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-         updateTranslationSettings({ ...translationSettings, [name]: value });
-      }, [updateTranslationSettings, translationSettings]);
+         translationSettingsRef.current = { ...translationSettingsRef.current, [name]: value };
+         localStorage.setItem(name, value);
+       }, []);
+
 
   // Blocks renderer
 
@@ -1146,7 +1131,7 @@ export function ChatMessage(props: {
                   <FormLabel>API Key (comma-separated):</FormLabel>
                   <Textarea
                       name="apiKey"
-                      value={translationSettings.apiKey}
+                      value={translationSettingsRef.current.apiKey}
                       onChange={handleTranslationSettingsChange}
                       placeholder='Enter your API key(s)'
                       minRows={4}
@@ -1156,25 +1141,25 @@ export function ChatMessage(props: {
 
                <FormControl sx={{mb: 2}}>
                    <FormLabel>Language Model:</FormLabel>
-                  <select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
+                  <select name="languageModel" value={translationSettingsRef.current.languageModel} onChange={handleTranslationSettingsChange}>
                       <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
                  </select>
                 </FormControl>
 
                <FormControl sx={{mb: 2}}>
                   <FormLabel>Source language:</FormLabel>
-                 <Input type="text" name="inlineLangSrc" value={translationSettings.inlineLangSrc} onChange={handleTranslationSettingsChange} placeholder='Source language' />
+                 <Input type="text" name="inlineLangSrc" value={translationSettingsRef.current.inlineLangSrc} onChange={handleTranslationSettingsChange} placeholder='Source language' />
                 </FormControl>
               <FormControl sx={{mb: 2}}>
                   <FormLabel>Target language:</FormLabel>
-                 <Input type="text" name="inlineLangDst" value={translationSettings.inlineLangDst} onChange={handleTranslationSettingsChange} placeholder='Target language' />
+                 <Input type="text" name="inlineLangDst" value={translationSettingsRef.current.inlineLangDst} onChange={handleTranslationSettingsChange} placeholder='Target language' />
                </FormControl>
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
                   <Textarea
                       name="systemPrompt"
-                      value={translationSettings.systemPrompt}
+                      value={translationSettingsRef.current.systemPrompt}
                       onChange={handleTranslationSettingsChange}
                       placeholder='System Prompt'
                       minRows={4}
@@ -1189,4 +1174,3 @@ export function ChatMessage(props: {
     </Box>
   );
 }
-export  {TranslationSettingsProvider}
