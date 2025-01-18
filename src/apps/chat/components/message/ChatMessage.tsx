@@ -164,15 +164,18 @@ export function ChatMessage(props: {
   sx?: SxProps,
 }) {
   // ref for translation settings
-    const translationSettingsRef = React.useRef({
-        apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
-        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
-        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-         systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-    });
+  const translationSettingsRef = React.useRef({
+    apiKey: localStorage.getItem("apiKey") || "",
+    languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
+    inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+    inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+    systemPrompt:
+      localStorage.getItem("systemPrompt") ||
+      "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
+  });
 
   // state
+  const [renderKey, setRenderKey] = React.useState(0); // Добавлено состояние renderKey
   const blocksRendererRef = React.useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = React.useState(false);
   const [selText, setSelText] = React.useState<string | null>(null);
@@ -180,10 +183,12 @@ export function ChatMessage(props: {
   const [contextMenuAnchor, setContextMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
-   const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
-    const [translationInProgress, setTranslationInProgress] = React.useState(false);
-    const [originalMessage, setOriginalMessage] = React.useState<string | null>(null); // состояние для хранения оригинала
-    const [, forceUpdate] = React.useState({}); // Добавляем состояние для принудительной перерисовки
+  const [translationSettingsOpen, setTranslationSettingsOpen] =
+    React.useState(false); // Состояние для модального окна настроек перевода
+  const [translationInProgress, setTranslationInProgress] = React.useState(false);
+  const [originalMessage, setOriginalMessage] = React.useState<string | null>(
+    null
+  ); // состояние для хранения оригинала
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -638,10 +643,10 @@ export function ChatMessage(props: {
 
  const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-         translationSettingsRef.current = { ...translationSettingsRef.current, [name]: value };
-         localStorage.setItem(name, value);
-        forceUpdate({}); // force re-render of the component
-       }, []);
+        translationSettingsRef.current = { ...translationSettingsRef.current, [name]: value };
+        localStorage.setItem(name, value);
+        setRenderKey(prevKey => prevKey + 1)
+    }, []);
 
 
   // Blocks renderer
