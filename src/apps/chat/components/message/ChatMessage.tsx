@@ -174,11 +174,10 @@ export function ChatMessage(props: {
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
    const [translationSettings, setTranslationSettings] = React.useState({
         apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
+        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
         inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-        inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
-        systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
+        systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
@@ -523,33 +522,32 @@ export function ChatMessage(props: {
             return apiKeys[selectedIndex];
         }, [apiKeyIndex, translationSettings.apiKey]);
 
-       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
-            const selectedKey = selectApiKey();
-            if (!selectedKey) {
-              alert('No API key set')
-                callback(null);
-              return;
-            }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
-                .replace("{text}", text);
+ const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, attempt = 0) => {
+    const selectedKey = selectApiKey();
+    if (!selectedKey) {
+        alert('No API key set');
+        callback(null);
+        return;
+    }
+    const formattedPrompt = translationSettings.systemPrompt
+        .replace("{sourceLang}", translationSettings.inlineLangSrc)
+        .replace("{targetLang}", translationSettings.inlineLangDst)
+        .replace("{text}", text);
 
-
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": selectedKey,
-              },
-             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: formattedPrompt
-                    }]
-                }],
-                safetySettings: [{
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": selectedKey,
+        },
+        body: JSON.stringify({
+            contents: [{
+                role: "user",
+                parts: [{
+                    text: formattedPrompt
+                }]
+            }],
+             safetySettings: [{
                         category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
                         threshold: "OFF"
                     },
@@ -570,23 +568,39 @@ export function ChatMessage(props: {
                         threshold: "OFF"
                     }
                 ]
-             }),
-            })
-            .then(response => response.json())
-              .then(data => {
-                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+        }),
+    })
+      .then(response => {
+                if (response.status === 429 || response.status === 400) {
+                    if (attempt < 3) { // ограничение попыток
+                         setTranslationInProgress(true);
+                        setTimeout(() => { // задержка перед повторной попыткой
+                            translateText(text, callback, attempt + 1);
+                        }, 10);
+                        return null;
+                    } else {
+                       setTranslationInProgress(false);
+                        console.error('Max translation attempts reached.');
+                        callback(null);
+                        return null;
+                   }
+                   }
+                    return response.json()
+             })
+        .then(data => {
+                 if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const translatedText = data.candidates[0].content.parts[0].text;
-                      callback(translatedText);
-                   }
-                   else{
-                       callback(null);
-                   }
-               })
-                .catch(()=> {
-                    callback(null)
-                });
-            }, [translationSettings, selectApiKey]
-        );
+                    callback(translatedText);
+                } else {
+                    callback(null);
+                  }
+            setTranslationInProgress(false);
+        })
+        .catch(() => {
+            setTranslationInProgress(false);
+             callback(null)
+          });
+}, [translationSettings, selectApiKey]);
 
 
     const handleTranslateText = React.useCallback(() => {
@@ -623,8 +637,6 @@ export function ChatMessage(props: {
 
      const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
-        localStorage.setItem(name, value)
        }, []);
 
 
@@ -1088,7 +1100,7 @@ export function ChatMessage(props: {
                  </MenuItem>
            )}
             <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
-                <ListItemDecorator><FormatPaintOutlinedIcon /></ListItemDecorator>
+                <ListItemDecorator><EditRoundedIcon /></ListItemDecorator>
                 Translate {translationInProgress &&  <CircularProgress size='sm' />}
               </MenuItem>
              <MenuItem onClick={handleOpenTranslationSettings}>
@@ -1126,7 +1138,6 @@ export function ChatMessage(props: {
                <FormControl sx={{mb: 2}}>
                    <FormLabel>Language Model:</FormLabel>
                   <select name="languageModel" value={translationSettings.languageModel} onChange={handleTranslationSettingsChange}>
-                      <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest</option>
                       <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
                  </select>
                 </FormControl>
@@ -1139,11 +1150,6 @@ export function ChatMessage(props: {
                   <FormLabel>Target language:</FormLabel>
                  <Input type="text" name="inlineLangDst" value={translationSettings.inlineLangDst} onChange={handleTranslationSettingsChange} placeholder='Target language' />
                </FormControl>
-
-                <FormControl sx={{mb: 2}}>
-                  <FormLabel>Translation Color:</FormLabel>
-                  <Input type="color" name="inlineStyle" value={translationSettings.inlineStyle} onChange={handleTranslationSettingsChange} />
-                </FormControl>
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
