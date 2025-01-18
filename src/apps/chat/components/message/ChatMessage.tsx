@@ -199,9 +199,9 @@ const useTranslation = (initialSettings: any) => {
     }, [selectApiKey, translationSettings]
     );
 
-      const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+ const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        setTranslationSettings((prevState:  typeof initialTranslationSettings) => ({ ...prevState, [name]: value }));
         localStorage.setItem(name, value)
        }, []);
 
