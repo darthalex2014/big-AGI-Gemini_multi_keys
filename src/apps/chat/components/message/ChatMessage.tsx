@@ -156,8 +156,8 @@ export function ChatMessage(props: {
   onMessageDelete?: (messageId: string) => void,
   onMessageFragmentAppend?: (messageId: DMessageId, fragment: DMessageFragment) => void
   onMessageFragmentDelete?: (messageId: DMessageId, fragmentId: DMessageFragmentId) => void,
-  onMessageFragmentReplace?: (messageId: DMessageId, fragmentId: DMessageFragmentId, newFragment: DMessageFragment) => void,
-  onMessageToggleUserFlag?: (messageId: string, flag: DMessageUserFlag, maxPerConversation?: number) => void,
+  onMessageFragmentReplace?: (messageId: DMessageId, fragmentId: DMessageFragmentId, newFragment: DMessageFragment, isTemporary?:boolean) => void,
+  onMessageToggleUserFlag?: (messageId: string, userFlag: DMessageUserFlag, maxPerConversation?: number) => void,
   onMessageTruncate?: (messageId: string) => void,
   onTextDiagram?: (messageId: string, text: string) => Promise<void>,
   onTextImagine?: (text: string) => Promise<void>,
@@ -611,13 +611,12 @@ export function ChatMessage(props: {
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
+             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
         });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
-
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
