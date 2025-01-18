@@ -123,6 +123,92 @@ export type ChatMessageTextPartEditState = { [fragmentId: DMessageFragmentId]: s
 
 export const ChatMessageMemo = React.memo(ChatMessage);
 
+const useTranslation = (initialSettings: any) => {
+    const [translationSettings, setTranslationSettings] = React.useState(initialSettings);
+    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
+
+    const selectApiKey = React.useCallback(() => {
+        if (!translationSettings.apiKey) return null;
+        const apiKeys = translationSettings.apiKey.split(',');
+        if (apiKeys.length === 0) return null;
+        const selectedIndex = apiKeyIndex % apiKeys.length;
+        setApiKeyIndex(selectedIndex + 1);
+        return apiKeys[selectedIndex];
+    }, [apiKeyIndex, translationSettings.apiKey]);
+
+    const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+        const selectedKey = selectApiKey();
+         if (!selectedKey) {
+            callback(null);
+            return;
+        }
+        const formattedPrompt = translationSettings.systemPrompt
+            .replace("{sourceLang}", translationSettings.inlineLangSrc)
+            .replace("{targetLang}", translationSettings.inlineLangDst)
+            .replace("{text}", text);
+
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": selectedKey,
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: formattedPrompt
+                    }]
+                }],
+                safetySettings: [{
+                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold: "OFF"
+                },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "OFF"
+                    },
+                    {
+                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        threshold: "OFF"
+                    }
+                ]
+            }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+                    const translatedText = data.candidates[0].content.parts[0].text;
+                    callback(translatedText);
+                }
+                else{
+                  callback(null);
+                }
+            })
+            .catch(()=> {
+                 callback(null)
+            });
+    }, [selectApiKey, translationSettings]
+    );
+
+      const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
+       }, []);
+
+    return { translationSettings, translateText, handleTranslationSettingsChange, setTranslationSettings, setApiKeyIndex };
+}
+
+
 /**
  * The Message component is a customizable chat message UI component that supports
  * different roles (user, assistant, and system), text editing, syntax highlighting,
@@ -173,16 +259,15 @@ export function ChatMessage(props: {
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
-   const [translationSettings, setTranslationSettings] = React.useState({
+    const initialTranslationSettings = {
         apiKey: localStorage.getItem("apiKey") || "",
         languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
         inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Выдавай ТОЛЬКО Переведенный Текст!\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-    });
-    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
-    const [translationInProgress, setTranslationInProgress] = React.useState(false);
+    };
+    const { translationSettings, translateText, handleTranslationSettingsChange, setTranslationSettings, setApiKeyIndex } = useTranslation(initialTranslationSettings);
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -319,16 +404,16 @@ export function ChatMessage(props: {
     };
 
     const replaceSelectedTextWithTranslation = React.useCallback((translation: string) => {
-        if (selRange) {
+         if (selRange) {
             const newNode = document.createElement("span");
             newNode.innerHTML = translation; // Вставка текста с переносами
             newNode.style.color = translationSettings.inlineStyle;
-            newNode.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
+             newNode.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
             const originalNode = selRange.extractContents();
              const wrapperNode = document.createElement("span");
             wrapperNode.appendChild(originalNode)
              wrapperNode.addEventListener('mouseenter', () => {
-                newNode.style.display = 'inline';
+                 newNode.style.display = 'inline';
                  wrapperNode.replaceChildren(originalNode, newNode);
             })
              wrapperNode.addEventListener('mouseleave', () => {
@@ -342,24 +427,22 @@ export function ChatMessage(props: {
         }
     }, [translationSettings.inlineStyle, selRange]);
 
-
-
-    const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
+      const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
         e.preventDefault();
-      setTranslationInProgress(true);
-       const selection = window.getSelection();
+        const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
+              setTranslationInProgress(true);
             const selectedText = selection.toString();
-           setSelRange(selection.getRangeAt(0).cloneRange());
-           translateText(selectedText, (translatedText) => {
-              if(translatedText){
-                   replaceSelectedTextWithTranslation(translatedText);
-              }
-             setTranslationInProgress(false);
-           })
-          handleCloseOpsMenu();
-           closeContextMenu();
-            closeBubble();
+             setSelRange(selection.getRangeAt(0).cloneRange());
+             await translateText(selectedText, (translatedText) => {
+                  if(translatedText){
+                      replaceSelectedTextWithTranslation(translatedText);
+                  }
+                 setTranslationInProgress(false);
+             })
+            handleCloseOpsMenu();
+             closeContextMenu();
+              closeBubble();
         }
     }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
 
@@ -462,50 +545,57 @@ export function ChatMessage(props: {
 
   // Context Menu
 
-  const removeContextAnchor = React.useCallback(() => {
-    if (contextMenuAnchor) {
-      try {
-        document.body.removeChild(contextMenuAnchor);
-      } catch (e) {
-        // ignore...
-      }
-    }
-  }, [contextMenuAnchor]);
+ const removeContextAnchor = React.useCallback(() => {
+        if (contextMenuAnchor) {
+            try {
+                document.body.removeChild(contextMenuAnchor);
+            } catch (e) {
+                // ignore...
+            }
+        }
+    }, [contextMenuAnchor]);
 
-  const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
-    event.stopPropagation();
-    event.preventDefault();
+    const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
+         event.stopPropagation();
+        event.preventDefault();
+         const selection = window.getSelection();
+         if (selection && selection.rangeCount > 0) {
+           setSelRange(selection.getRangeAt(0).cloneRange())
+          }
+        // remove any stray anchor
+        removeContextAnchor();
 
-    // remove any stray anchor
-    removeContextAnchor();
+        // create a temporary fixed anchor element to position the menu
+        const anchorEl = document.createElement('div');
+        anchorEl.style.position = 'fixed';
+        anchorEl.style.left = `${event.clientX}px`;
+        anchorEl.style.top = `${event.clientY}px`;
+        document.body.appendChild(anchorEl);
 
-    // create a temporary fixed anchor element to position the menu
-    const anchorEl = document.createElement('div');
-    anchorEl.style.position = 'fixed';
-    anchorEl.style.left = `${event.clientX}px`;
-    anchorEl.style.top = `${event.clientY}px`;
-    document.body.appendChild(anchorEl);
+        setContextMenuAnchor(anchorEl);
+        setSelText(selectedText);
+    }, [removeContextAnchor]);
 
-    setContextMenuAnchor(anchorEl);
-    setSelText(selectedText);
-  }, [removeContextAnchor]);
+    const closeContextMenu = React.useCallback(() => {
+         if(selRange){
+                window.getSelection()?.removeAllRanges?.();
+                selRange.collapse()
+                 setSelRange(null)
+         }
+        removeContextAnchor();
+        setContextMenuAnchor(null);
+        setSelText(null);
+    }, [removeContextAnchor, selRange]);
 
-  const closeContextMenu = React.useCallback(() => {
-    // window.getSelection()?.removeAllRanges?.();
-    removeContextAnchor();
-    setContextMenuAnchor(null);
-    setSelText(null);
-  }, [removeContextAnchor]);
-
-  const handleContextMenu = React.useCallback((event: MouseEvent) => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const selectedText = range.toString().trim();
-      if (selectedText.length > 0)
-        openContextMenu(event, selectedText);
-    }
-  }, [openContextMenu]);
+    const handleContextMenu = React.useCallback((event: MouseEvent) => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const selectedText = range.toString().trim();
+            if (selectedText.length > 0)
+                openContextMenu(event, selectedText);
+        }
+    }, [openContextMenu]);
 
 
   // Bubble
@@ -561,152 +651,6 @@ export function ChatMessage(props: {
         setBubbleAnchor(anchorEl);
         setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
     }, [closeBubble]);
-
-
-
-     const selectApiKey = React.useCallback(() => {
-             if (!translationSettings.apiKey) return null;
-            const apiKeys = translationSettings.apiKey.split(',');
-             if (apiKeys.length === 0) return null;
-            const selectedIndex = apiKeyIndex % apiKeys.length;
-           setApiKeyIndex(selectedIndex + 1);
-            return apiKeys[selectedIndex];
-        }, [apiKeyIndex, translationSettings.apiKey]);
-
-       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
-            const selectedKey = selectApiKey();
-            if (!selectedKey) {
-              alert('No API key set')
-                callback(null);
-              return;
-            }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
-                .replace("{text}", text);
-
-
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": selectedKey,
-              },
-             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: formattedPrompt
-                    }]
-                }],
-                safetySettings: [{
-                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HATE_SPEECH",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HARASSMENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
-                        threshold: "OFF"
-                    }
-                ]
-             }),
-            })
-            .then(response => response.json())
-              .then(data => {
-                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
-                    const translatedText = data.candidates[0].content.parts[0].text;
-                      callback(translatedText);
-                   }
-                   else{
-                       callback(null);
-                   }
-               })
-                .catch(()=> {
-                    callback(null)
-                });
-            }, [translationSettings, selectApiKey]
-        );
-
-
-    const replaceSelectedTextWithTranslation = React.useCallback((translation: string) => {
-        if (selRange) {
-            const newNode = document.createElement("span");
-            newNode.innerHTML = translation; // Вставка текста с переносами
-            newNode.style.color = translationSettings.inlineStyle;
-            newNode.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'
-            const originalNode = selRange.extractContents();
-             const wrapperNode = document.createElement("span");
-            wrapperNode.appendChild(originalNode)
-             wrapperNode.addEventListener('mouseenter', () => {
-                newNode.style.display = 'inline';
-                 wrapperNode.replaceChildren(originalNode, newNode);
-            })
-             wrapperNode.addEventListener('mouseleave', () => {
-                newNode.style.display = 'none'
-                 wrapperNode.replaceChildren(originalNode);
-            })
-
-            selRange.insertNode(wrapperNode);
-            selRange.collapse();
-            setSelRange(null)
-        }
-    }, [translationSettings.inlineStyle, selRange]);
-
-    const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
-        e.preventDefault();
-        setTranslationInProgress(true);
-       const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const selectedText = selection.toString();
-           setSelRange(selection.getRangeAt(0).cloneRange());
-           translateText(selectedText, (translatedText) => {
-              if(translatedText){
-                   replaceSelectedTextWithTranslation(translatedText);
-              }
-             setTranslationInProgress(false);
-           })
-          handleCloseOpsMenu();
-           closeContextMenu();
-            closeBubble();
-        }
-    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
-
-
-    const handleOpsCopy = (e: React.MouseEvent) => {
-       const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-             setSelRange(selection.getRangeAt(0).cloneRange())
-        }
-       copyToClipboard(textSubject, 'Text');
-        e.preventDefault();
-        handleCloseOpsMenu();
-        closeContextMenu();
-        closeBubble();
-    };
-   const handleOpenTranslationSettings = React.useCallback(() => {
-      setTranslationSettingsOpen(true);
-    }, []);
-
-    const handleCloseTranslationSettings = React.useCallback(() => {
-      setTranslationSettingsOpen(false);
-    }, []);
-
-     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
-        localStorage.setItem(name, value)
-       }, []);
 
 
   // Blocks renderer
