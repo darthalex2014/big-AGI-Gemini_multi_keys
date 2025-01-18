@@ -428,7 +428,61 @@ export function ChatMessage(props: {
         }
     }, [translationSettings.inlineStyle, selRange]);
 
-      const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
+  // Context Menu
+
+ const removeContextAnchor = React.useCallback(() => {
+        if (contextMenuAnchor) {
+            try {
+                document.body.removeChild(contextMenuAnchor);
+            } catch (e) {
+                // ignore...
+            }
+        }
+    }, [contextMenuAnchor]);
+
+    const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
+         event.stopPropagation();
+        event.preventDefault();
+         const selection = window.getSelection();
+         if (selection && selection.rangeCount > 0) {
+           setSelRange(selection.getRangeAt(0).cloneRange())
+          }
+        // remove any stray anchor
+        removeContextAnchor();
+
+        // create a temporary fixed anchor element to position the menu
+        const anchorEl = document.createElement('div');
+        anchorEl.style.position = 'fixed';
+        anchorEl.style.left = `${event.clientX}px`;
+        anchorEl.style.top = `${event.clientY}px`;
+        document.body.appendChild(anchorEl);
+
+        setContextMenuAnchor(anchorEl);
+        setSelText(selectedText);
+    }, [removeContextAnchor]);
+
+    const closeContextMenu = React.useCallback(() => {
+         if(selRange){
+                window.getSelection()?.removeAllRanges?.();
+                selRange.collapse()
+                 setSelRange(null)
+         }
+        removeContextAnchor();
+        setContextMenuAnchor(null);
+        setSelText(null);
+    }, [removeContextAnchor, selRange]);
+
+    const handleContextMenu = React.useCallback((event: MouseEvent) => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const selectedText = range.toString().trim();
+            if (selectedText.length > 0)
+                openContextMenu(event, selectedText);
+        }
+    }, [openContextMenu]);
+    
+        const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
@@ -542,61 +596,6 @@ export function ChatMessage(props: {
   const handleOpsDelete = React.useCallback(() => {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
-
-
-  // Context Menu
-
- const removeContextAnchor = React.useCallback(() => {
-        if (contextMenuAnchor) {
-            try {
-                document.body.removeChild(contextMenuAnchor);
-            } catch (e) {
-                // ignore...
-            }
-        }
-    }, [contextMenuAnchor]);
-
-    const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
-         event.stopPropagation();
-        event.preventDefault();
-         const selection = window.getSelection();
-         if (selection && selection.rangeCount > 0) {
-           setSelRange(selection.getRangeAt(0).cloneRange())
-          }
-        // remove any stray anchor
-        removeContextAnchor();
-
-        // create a temporary fixed anchor element to position the menu
-        const anchorEl = document.createElement('div');
-        anchorEl.style.position = 'fixed';
-        anchorEl.style.left = `${event.clientX}px`;
-        anchorEl.style.top = `${event.clientY}px`;
-        document.body.appendChild(anchorEl);
-
-        setContextMenuAnchor(anchorEl);
-        setSelText(selectedText);
-    }, [removeContextAnchor]);
-
-    const closeContextMenu = React.useCallback(() => {
-         if(selRange){
-                window.getSelection()?.removeAllRanges?.();
-                selRange.collapse()
-                 setSelRange(null)
-         }
-        removeContextAnchor();
-        setContextMenuAnchor(null);
-        setSelText(null);
-    }, [removeContextAnchor, selRange]);
-
-    const handleContextMenu = React.useCallback((event: MouseEvent) => {
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const selectedText = range.toString().trim();
-            if (selectedText.length > 0)
-                openContextMenu(event, selectedText);
-        }
-    }, [openContextMenu]);
 
 
   // Bubble
