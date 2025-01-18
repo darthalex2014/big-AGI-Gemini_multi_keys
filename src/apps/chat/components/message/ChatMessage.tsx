@@ -181,6 +181,7 @@ export function ChatMessage(props: {
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
+         inlineMode: localStorage.getItem("inlineMode") === 'true' || false, // новое состояние
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
@@ -411,156 +412,20 @@ export function ChatMessage(props: {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
 
-    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
-   const [translationSettings, setTranslationSettings] = React.useState({
-        apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-1.5-pro-latest",
-        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
-        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-        inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
-        systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
-         inlineMode: localStorage.getItem("inlineMode") === 'true' || false, // новое состояние
-    });
-    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
-    const [translationInProgress, setTranslationInProgress] = React.useState(false);
-     
-    const selectApiKey = React.useCallback(() => {
-             if (!translationSettings.apiKey) return null;
-            const apiKeys = translationSettings.apiKey.split(',');
-             if (apiKeys.length === 0) return null;
-            const selectedIndex = apiKeyIndex % apiKeys.length;
-           setApiKeyIndex(selectedIndex + 1);
-            return apiKeys[selectedIndex];
-        }, [apiKeyIndex, translationSettings.apiKey]);
-
-       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
-            const selectedKey = selectApiKey();
-            if (!selectedKey) {
-              alert('No API key set')
-                callback(null);
-              return;
-            }
-           const formattedPrompt = translationSettings.systemPrompt
-                .replace("{sourceLang}", translationSettings.inlineLangSrc)
-                .replace("{targetLang}", translationSettings.inlineLangDst)
-                .replace("{text}", text);
-
-
-            fetch(`https://generativelanguage.googleapis.com/v1beta/models/${translationSettings.languageModel}:generateContent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": selectedKey,
-              },
-             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: formattedPrompt
-                    }]
-                }],
-                safetySettings: [{
-                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HATE_SPEECH",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_HARASSMENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold: "OFF"
-                    },
-                    {
-                        category: "HARM_CATEGORY_CIVIC_INTEGRITY",
-                        threshold: "OFF"
-                    }
-                ]
-             }),
-            })
-            .then(response => response.json())
-              .then(data => {
-                   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
-                    const translatedText = data.candidates[0].content.parts[0].text;
-                      callback(translatedText);
-                   }
-                   else{
-                       callback(null);
-                   }
-               })
-                .catch(()=> {
-                    callback(null)
-                });
-            }, [translationSettings, selectApiKey]
-        );
-
-
-      const handleTranslateText = React.useCallback(() => {
-        setTranslationInProgress(true);
-        const textToTranslate = messageFragmentsReduceText(messageFragments);
-        translateText(textToTranslate, (translatedText) => {
-           setTranslationInProgress(false);
-           handleCloseOpsMenu();
-          if (translatedText) {
-            if (translationSettings.inlineMode) {
-                const newNode = document.createElement("span");
-                // Разбивка перевода на строки
-                const translation = translatedText.replace(/\n/g, "<br>");
-                newNode.innerHTML = translation;
-                newNode.style.color = translationSettings.inlineStyle;
-                 
-               
-                   if (contextMenuAnchor) {
-                        const range =  window.getSelection()?.getRangeAt(0);
-                      if (range) {
-                        range.deleteContents();
-                        range.insertNode(newNode);
-                    }
-                  }
-            
-            }
-            else {
-               const newFragment = createTextContentFragment(translatedText);
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-            }
-          }
-        });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, translationSettings.inlineStyle, handleCloseOpsMenu]);
-
-
-     const handleOpenTranslationSettings = React.useCallback(() => {
-      setTranslationSettingsOpen(true);
-    }, []);
-
-    const handleCloseTranslationSettings = React.useCallback(() => {
-      setTranslationSettingsOpen(false);
-    }, []);
-
-     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
-        localStorage.setItem(name, value)
-       }, []);
-
   // Context Menu
-
   const removeContextAnchor = React.useCallback(() => {
-    if (contextMenuAnchor) {
-      try {
-        document.body.removeChild(contextMenuAnchor);
-      } catch (e) {
-        // ignore...
+      if (contextMenuAnchor) {
+        try {
+          document.body.removeChild(contextMenuAnchor);
+        } catch (e) {
+            // ignore...
+        }
       }
-    }
-  }, [contextMenuAnchor]);
+    }, [contextMenuAnchor]);
 
-  const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
-    event.stopPropagation();
-    event.preventDefault();
+    const openContextMenu = React.useCallback((event: MouseEvent, selectedText: string) => {
+      event.stopPropagation();
+      event.preventDefault();
 
     // remove any stray anchor
     removeContextAnchor();
@@ -574,82 +439,80 @@ export function ChatMessage(props: {
 
     setContextMenuAnchor(anchorEl);
     setSelText(selectedText);
-  }, [removeContextAnchor]);
+    }, [removeContextAnchor]);
 
-  const closeContextMenu = React.useCallback(() => {
-    // window.getSelection()?.removeAllRanges?.();
-    removeContextAnchor();
-    setContextMenuAnchor(null);
-    setSelText(null);
-  }, [removeContextAnchor]);
+    const closeContextMenu = React.useCallback(() => {
+      // window.getSelection()?.removeAllRanges?.();
+      removeContextAnchor();
+      setContextMenuAnchor(null);
+      setSelText(null);
+    }, [removeContextAnchor]);
 
-  const handleContextMenu = React.useCallback((event: MouseEvent) => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const selectedText = range.toString().trim();
-      if (selectedText.length > 0)
-        openContextMenu(event, selectedText);
-    }
-  }, [openContextMenu]);
+    const handleContextMenu = React.useCallback((event: MouseEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString().trim();
+        if (selectedText.length > 0)
+           openContextMenu(event, selectedText);
+      }
+    }, [openContextMenu]);
 
 
   // Bubble
 
-  const closeBubble = React.useCallback((anchorEl?: HTMLElement) => {
-    window.getSelection()?.removeAllRanges?.();
-    try {
-      const anchor = anchorEl || bubbleAnchor;
-      anchor && document.body.removeChild(anchor);
-    } catch (e) {
-      // ignore...
-    }
-    setBubbleAnchor(null);
-    setSelText(null);
-  }, [bubbleAnchor]);
+    const closeBubble = React.useCallback((anchorEl?: HTMLElement) => {
+      window.getSelection()?.removeAllRanges?.();
+        try {
+          const anchor = anchorEl || bubbleAnchor;
+            anchor && document.body.removeChild(anchor);
+      } catch (e) {
+         // ignore...
+      }
+        setBubbleAnchor(null);
+        setSelText(null);
+      }, [bubbleAnchor]);
 
-  // restore blocksRendererRef
-  const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
-    // check for selection
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount <= 0) return;
-
-    // check for enough selection
-    const selectionText = selection.toString();
-    if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
-
-    // check for the selection being inside the blocks renderer (core of the message)
-    const selectionRange = selection.getRangeAt(0);
-    const blocksElement = blocksRendererRef.current;
-    if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
-
-    const rangeRects = selectionRange.getClientRects();
-    if (rangeRects.length <= 0) return;
-
-    const firstRect = rangeRects[0];
-    const anchorEl = document.createElement('div');
-    anchorEl.style.position = 'fixed';
-    anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
-    anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
-    document.body.appendChild(anchorEl);
-    anchorEl.setAttribute('role', 'dialog');
-
-    // auto-close logic on unselect
-    const closeOnUnselect = () => {
+    // restore blocksRendererRef
+    const handleOpenBubble = React.useCallback((_event: MouseEvent) => {
+      // check for selection
       const selection = window.getSelection();
-      if (!selection || selection.toString().trim() === '') {
-        closeBubble(anchorEl);
+      if (!selection || selection.rangeCount <= 0) return;
+      // check for enough selection
+        const selectionText = selection.toString();
+      if (selectionText.trim().length < BUBBLE_MIN_TEXT_LENGTH) return;
+
+      // check for the selection being inside the blocks renderer (core of the message)
+      const selectionRange = selection.getRangeAt(0);
+      const blocksElement = blocksRendererRef.current;
+      if (!blocksElement || !blocksElement.contains(selectionRange.commonAncestorContainer)) return;
+
+      const rangeRects = selectionRange.getClientRects();
+      if (rangeRects.length <= 0) return;
+
+      const firstRect = rangeRects[0];
+      const anchorEl = document.createElement('div');
+      anchorEl.style.position = 'fixed';
+      anchorEl.style.left = `${firstRect.left + window.scrollX}px`;
+      anchorEl.style.top = `${firstRect.top + window.scrollY}px`;
+      document.body.appendChild(anchorEl);
+      anchorEl.setAttribute('role', 'dialog');
+
+      // auto-close logic on unselect
+       const closeOnUnselect = () => {
+       const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') {
+          closeBubble(anchorEl);
         document.removeEventListener('selectionchange', closeOnUnselect);
       }
-    };
-    document.addEventListener('selectionchange', closeOnUnselect);
+       };
+      document.addEventListener('selectionchange', closeOnUnselect);
 
-    setBubbleAnchor(anchorEl);
-    setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
-  }, [closeBubble]);
+      setBubbleAnchor(anchorEl);
+        setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
+    }, [closeBubble]);
 
-
-     const selectApiKey = React.useCallback(() => {
+       const selectApiKey = React.useCallback(() => {
              if (!translationSettings.apiKey) return null;
             const apiKeys = translationSettings.apiKey.split(',');
              if (apiKeys.length === 0) return null;
@@ -728,15 +591,33 @@ export function ChatMessage(props: {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
         translateText(textToTranslate, (translatedText) => {
+           setTranslationInProgress(false);
+           handleCloseOpsMenu();
           if (translatedText) {
+            if (translationSettings.inlineMode) {
+                const newNode = document.createElement("span");
+                // Разбивка перевода на строки
+                const translation = translatedText.replace(/\n/g, "<br>");
+                newNode.innerHTML = translation;
+                newNode.style.color = translationSettings.inlineStyle;
+                 
+               
+                   if (contextMenuAnchor) {
+                        const range =  window.getSelection()?.getRangeAt(0);
+                      if (range) {
+                        range.deleteContents();
+                        range.insertNode(newNode);
+                    }
+                  }
+            
+            }
+            else {
                const newFragment = createTextContentFragment(translatedText);
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
-             setTranslationInProgress(false);
-            handleCloseOpsMenu();
+          }
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
-
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, translationSettings.inlineStyle, handleCloseOpsMenu]);
 
     const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
