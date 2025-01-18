@@ -596,17 +596,18 @@ export function ChatMessage(props: {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          translateText(textToTranslate, (translatedText) => {
-           if (translatedText) {
-              const newFragment = createTextContentFragment(translatedText);
-               if (!translationSettings.inlineMode) {
-                  onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
-                } else {
-                  onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
+          if (translatedText) {
+             const newFragment = createTextContentFragment(translatedText);
+             if (translationSettings.inlineMode)
+                {
+                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true );
+               } else {
+                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
               }
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
-         });
+        });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
 
 
