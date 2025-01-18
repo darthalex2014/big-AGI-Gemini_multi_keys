@@ -123,6 +123,32 @@ export type ChatMessageTextPartEditState = { [fragmentId: DMessageFragmentId]: s
 
 export const ChatMessageMemo = React.memo(ChatMessage);
 
+// Создаем контекст
+const TranslationSettingsContext = React.createContext(null);
+
+// Создаем провайдер контекста
+const TranslationSettingsProvider = ({ children }) => {
+    const [translationSettings, setTranslationSettings] = React.useState(() => ({
+        apiKey: localStorage.getItem("apiKey") || "",
+        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
+        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
+        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
+        systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
+    }));
+
+    const updateTranslationSettings = React.useCallback((newSettings) => {
+            setTranslationSettings(newSettings);
+            for (const key in newSettings) {
+              localStorage.setItem(key, newSettings[key])
+            }
+        }, []);
+
+    return (
+        <TranslationSettingsContext.Provider value={{ translationSettings, updateTranslationSettings }}>
+            {children}
+        </TranslationSettingsContext.Provider>
+    );
+};
 /**
  * The Message component is a customizable chat message UI component that supports
  * different roles (user, assistant, and system), text editing, syntax highlighting,
@@ -172,17 +198,11 @@ export function ChatMessage(props: {
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
-   const [translationSettings, setTranslationSettings] = React.useState({
-        apiKey: localStorage.getItem("apiKey") || "",
-        languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
-        inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
-        inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
-        systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-    });
-    const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
     const [originalMessage, setOriginalMessage] = React.useState<string | null>(null); // состояние для хранения оригинала
 
+
+    const { translationSettings, updateTranslationSettings } = React.useContext(TranslationSettingsContext);
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
     adjContentScaling: adjustContentScaling(state.contentScaling, props.adjustContentScaling),
@@ -513,8 +533,8 @@ export function ChatMessage(props: {
   }, [closeBubble]);
 
 
-    const selectApiKey = React.useCallback(() => {
-         if (!translationSettings || !translationSettings.apiKey) return null;
+     const selectApiKey = React.useCallback(() => {
+         if (!translationSettings.apiKey) return null;
          const apiKeys = translationSettings.apiKey.split(',');
          if (apiKeys.length === 0) return null;
 
@@ -523,7 +543,7 @@ export function ChatMessage(props: {
 
          // Возвращаем ключ по случайному индексу
          return apiKeys[randomIndex];
-     }, [translationSettings]);
+     }, [translationSettings.apiKey]);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
@@ -605,7 +625,7 @@ export function ChatMessage(props: {
         const textToTranslate = messageFragmentsReduceText(messageFragments);
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
-               setOriginalMessage(textToTranslate); // сохраняем оригинал только при успешном переводе
+               setOriginalMessage(textToTranslate);
                const newFragment = createTextContentFragment(translatedText);
                 onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
                setTranslationInProgress(false);
@@ -634,15 +654,10 @@ export function ChatMessage(props: {
       setTranslationSettingsOpen(false);
     }, []);
 
- const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-         setTranslationSettings(prevState => {
-             const newState = { ...prevState, [name]: value };
-             localStorage.setItem(name, value);
-             return newState;
-         });
-       }, []);
-
+         updateTranslationSettings({ ...translationSettings, [name]: value });
+      }, [updateTranslationSettings, translationSettings]);
 
   // Blocks renderer
 
