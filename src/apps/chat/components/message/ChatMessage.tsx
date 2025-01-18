@@ -651,25 +651,7 @@ export function ChatMessage(props: {
         setBubbleAnchor(anchorEl);
         setSelText(selectionText); /* TODO: operate on the underlying content, not the rendered text */
     }, [closeBubble]);
-    
-        const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
-        e.preventDefault();
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-              setTranslationInProgress(true);
-            const selectedText = selection.toString();
-             setSelRange(selection.getRangeAt(0).cloneRange());
-             await translateText(selectedText, (translatedText) => {
-                  if(translatedText){
-                      replaceSelectedTextWithTranslation(translatedText);
-                  }
-                 setTranslationInProgress(false);
-             })
-            handleCloseOpsMenu();
-             closeContextMenu();
-              closeBubble();
-        }
-    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
+
 
   // Blocks renderer
 
