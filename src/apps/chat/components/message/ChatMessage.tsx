@@ -181,12 +181,11 @@ export function ChatMessage(props: {
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
-       inlineMode: localStorage.getItem('inlineMode') === 'true' || false,
+        inlineMode: localStorage.getItem('inlineMode') === 'true' || false,
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
-    const [translatedText, setTranslatedText] = React.useState<string|null>(null);
-    const [originalText, setOriginalText] = React.useState<string|null>(null);
+
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -598,21 +597,25 @@ export function ChatMessage(props: {
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          if (translationSettings.inlineMode)
         {
-         setOriginalText(textToTranslate);
+          
+            translateText(textToTranslate, (translatedText) => {
+                  if (translatedText) {
+                      const newFragment = createTextContentFragment(translatedText);
+                      onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true );
+                   }
+                   setTranslationInProgress(false);
+                   handleCloseOpsMenu();
+             });
+        } else {
+            translateText(textToTranslate, (translatedText) => {
+              if (translatedText) {
+                   const newFragment = createTextContentFragment(translatedText);
+                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+                }
+                 setTranslationInProgress(false);
+                 handleCloseOpsMenu();
+            });
         }
-        translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-               const newFragment = createTextContentFragment(translatedText);
-             if (translationSettings.inlineMode)
-                {
-                  setTranslatedText(translatedText)
-               } else {
-                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-              }
-            }
-             setTranslationInProgress(false);
-             handleCloseOpsMenu();
-        });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
 
 
@@ -848,8 +851,7 @@ export function ChatMessage(props: {
             disableMarkdownText={disableMarkdown || fromUser /* User messages are edited as text. Try to have them in plain text. NOTE: This may bite. */}
             showUnsafeHtmlCode={props.showUnsafeHtmlCode}
             enhanceCodeBlocks={labsEnhanceCodeBlocks}
-             translatedText={translationSettings.inlineMode && translatedText}
-             originalText = {translationSettings.inlineMode && originalText}
+
             textEditsState={textContentEditState}
             setEditedText={(!props.onMessageFragmentReplace || messagePendingIncomplete) ? undefined : handleEditSetText}
             onEditsApply={handleApplyAllEdits}
@@ -1100,7 +1102,7 @@ export function ChatMessage(props: {
               justifyContent: 'center',
             }}>
           <Box sx={{
-              maxWidth: 600,
+              maxWidth: 700,
               bgcolor: 'background.surface',
               p: 2,
               borderRadius: 'md'
@@ -1109,7 +1111,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px'}} />
+                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '120px' }} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1136,17 +1138,8 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px' }}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '200px' }}/>
                 </FormControl>
-               <FormControl sx={{mb: 2}}>
-                   <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
-                      <FormLabel>Inline Mode:</FormLabel>
-                       <Switch  name="inlineMode" checked={translationSettings.inlineMode} onChange={(e)=>{
-                          setTranslationSettings(prevState => ({ ...prevState, inlineMode: e.target.checked }));
-                           localStorage.setItem('inlineMode', String(e.target.checked))
-                    }}/>
-                    </Box>
-                  </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
                 </Box>
