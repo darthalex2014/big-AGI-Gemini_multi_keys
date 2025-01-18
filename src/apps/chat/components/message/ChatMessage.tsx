@@ -592,7 +592,7 @@ export function ChatMessage(props: {
         );
 
 
-   const handleTranslateText = React.useCallback(() => {
+ const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          translateText(textToTranslate, (translatedText) => {
@@ -600,7 +600,7 @@ export function ChatMessage(props: {
              const newFragment = createTextContentFragment(translatedText);
              if (translationSettings.inlineMode)
                 {
-                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true );
+                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
                } else {
                     onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
               }
