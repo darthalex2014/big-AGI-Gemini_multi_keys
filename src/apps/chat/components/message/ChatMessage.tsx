@@ -1143,7 +1143,7 @@ export function ChatMessage(props: {
                 <FormControl sx={{mb: 2}}>
                    <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
                       <FormLabel>Inline Mode:</FormLabel>
-                       <Switch  name="inlineMode" checked={translationSettings.inlineMode} onChange={(e)=>{
+                       <Switch  checked={translationSettings.inlineMode} onChange={(e)=>{
                           setTranslationSettings(prevState => ({ ...prevState, inlineMode: e.target.checked }));
                            localStorage.setItem('inlineMode', String(e.target.checked))
                      }}/>
