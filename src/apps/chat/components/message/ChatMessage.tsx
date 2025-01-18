@@ -1118,7 +1118,7 @@ export function ChatMessage(props: {
                       value={translationSettings.apiKey}
                       onChange={handleTranslationSettingsChange}
                       placeholder='Enter your API key(s)'
-                      rows={3} // задаем высоту в строках
+                      minRows={3} // задаем высоту в строках
                   />
               </FormControl>
 
