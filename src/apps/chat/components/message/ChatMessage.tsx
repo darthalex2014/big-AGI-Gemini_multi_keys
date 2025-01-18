@@ -592,23 +592,32 @@ export function ChatMessage(props: {
         );
 
 
- const handleTranslateText = React.useCallback(() => {
+    const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-             if (translationSettings.inlineMode)
-                {
-                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
-               } else {
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-              }
+            onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
         });
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, translationSettings.inlineMode, handleCloseOpsMenu]);
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
+   
+  const handleTranslateTextInline = React.useCallback(() => {
+        setTranslationInProgress(true);
+        const textToTranslate = messageFragmentsReduceText(messageFragments);
+        translateText(textToTranslate, (translatedText) => {
+          if (translatedText) {
+             const newFragment = createTextContentFragment(translatedText);
+             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
+            }
+             setTranslationInProgress(false);
+             handleCloseOpsMenu();
+        });
+    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
+
 
     const handleOpenTranslationSettings = React.useCallback(() => {
       setTranslationSettingsOpen(true);
