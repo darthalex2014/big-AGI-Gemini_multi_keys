@@ -526,7 +526,7 @@ export function ChatMessage(props: {
             return apiKeys[selectedIndex];
         }, [apiKeyIndex, translationSettings.apiKey]);
 
-       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
+ const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, inlineMode: boolean) => {
             const selectedKey = selectApiKey();
             if (!selectedKey) {
               alert('No API key set')
@@ -592,17 +592,17 @@ export function ChatMessage(props: {
         );
 
 
-    const handleTranslateText = React.useCallback(() => {
+ const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-            onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
+             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
-        });
+        }, false);
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
    
   const handleTranslateTextInline = React.useCallback(() => {
@@ -615,8 +615,9 @@ export function ChatMessage(props: {
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
-        });
+        }, true);
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
+
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
