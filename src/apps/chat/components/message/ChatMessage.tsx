@@ -603,6 +603,7 @@ export function ChatMessage(props: {
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
+        setOriginalMessage(textToTranslate); // сохраняем оригинал
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
                const newFragment = createTextContentFragment(translatedText);
