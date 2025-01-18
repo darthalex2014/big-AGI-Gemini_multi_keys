@@ -526,7 +526,7 @@ export function ChatMessage(props: {
             return apiKeys[selectedIndex];
         }, [apiKeyIndex, translationSettings.apiKey]);
 
- const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, inlineMode: boolean) => {
+   const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, inlineMode: boolean) => {
             const selectedKey = selectApiKey();
             if (!selectedKey) {
               alert('No API key set')
@@ -592,30 +592,31 @@ export function ChatMessage(props: {
         );
 
 
- const handleTranslateText = React.useCallback(() => {
+
+    const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
          translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
-            }
+              onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
+             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
-        }, false);
+          }, false);
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
    
   const handleTranslateTextInline = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-        translateText(textToTranslate, (translatedText) => {
+         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
-             const newFragment = createTextContentFragment(translatedText);
-             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
+              const newFragment = createTextContentFragment(translatedText);
+               onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
-        }, true);
+         }, true);
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
 
 
