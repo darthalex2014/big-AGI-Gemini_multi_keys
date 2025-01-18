@@ -471,16 +471,6 @@ export function ChatMessage(props: {
         setContextMenuAnchor(null);
         setSelText(null);
     }, [removeContextAnchor, selRange]);
-
-    const handleContextMenu = React.useCallback((event: MouseEvent) => {
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const selectedText = range.toString().trim();
-            if (selectedText.length > 0)
-                openContextMenu(event, selectedText);
-        }
-    }, [openContextMenu]);
     
         const handleOpsTranslate = React.useCallback(async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -499,8 +489,8 @@ export function ChatMessage(props: {
              closeContextMenu();
               closeBubble();
         }
-    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu, closeBubble]);
-
+    }, [translateText, replaceSelectedTextWithTranslation, handleCloseOpsMenu, closeContextMenu]);
+   
   const handleOpsEditToggle = React.useCallback((e: React.MouseEvent) => {
     if (messagePendingIncomplete && !isEditingText) return; // don't allow editing while incomplete
     if (isEditingText) handleEditsCancel();
