@@ -183,6 +183,7 @@ export function ChatMessage(props: {
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
     const [originalMessage, setOriginalMessage] = React.useState<string | null>(null); // состояние для хранения оригинала
+    const [, forceUpdate] = React.useState({}); // Добавляем состояние для принудительной перерисовки
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -639,6 +640,7 @@ export function ChatMessage(props: {
         const { name, value } = event.target;
          translationSettingsRef.current = { ...translationSettingsRef.current, [name]: value };
          localStorage.setItem(name, value);
+        forceUpdate({}); // force re-render of the component
        }, []);
 
 
