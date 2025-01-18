@@ -611,12 +611,13 @@ export function ChatMessage(props: {
         translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
              const newFragment = createTextContentFragment(translatedText);
-             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
+             onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
             }
              setTranslationInProgress(false);
              handleCloseOpsMenu();
         });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
+
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -1153,3 +1154,4 @@ export function ChatMessage(props: {
     </Box>
   );
 }
+
