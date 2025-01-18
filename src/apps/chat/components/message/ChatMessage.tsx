@@ -1080,6 +1080,10 @@ export function ChatMessage(props: {
                 <ListItemDecorator><FormatPaintTwoToneIcon/></ListItemDecorator>
                 Translate {translationInProgress &&  <CircularProgress size='sm' />}
               </MenuItem>
+             <MenuItem onClick={handleTranslateTextInline} disabled={translationInProgress}>
+                <ListItemDecorator><FormatPaintTwoToneIcon/></ListItemDecorator>
+                Translate Inline {translationInProgress &&  <CircularProgress size='sm' />}
+              </MenuItem>
              <MenuItem onClick={handleOpenTranslationSettings}>
                 <ListItemDecorator><SettingsIcon /></ListItemDecorator>
                 Translation settings
@@ -1131,15 +1135,7 @@ export function ChatMessage(props: {
                   <FormLabel>System Prompt:</FormLabel>
                   <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px' }}/>
                 </FormControl>
-                <FormControl sx={{mb: 2}}>
-                   <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
-                      <FormLabel>Inline Mode:</FormLabel>
-                       <Switch  checked={translationSettings.inlineMode} onChange={(e)=>{
-                          setTranslationSettings(prevState => ({ ...prevState, inlineMode: e.target.checked }));
-                           localStorage.setItem('inlineMode', String(e.target.checked))
-                     }}/>
-                    </Box>
-                  </FormControl>
+                
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
                 </Box>
