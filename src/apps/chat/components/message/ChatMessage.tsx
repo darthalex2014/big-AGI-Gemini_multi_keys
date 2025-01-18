@@ -600,9 +600,9 @@ export function ChatMessage(props: {
              const newFragment = createTextContentFragment(translatedText);
              if (translationSettings.inlineMode)
                 {
-                     onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true );
+                   onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
                } else {
-                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
+                    onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
               }
             }
              setTranslationInProgress(false);
