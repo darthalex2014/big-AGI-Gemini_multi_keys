@@ -16,7 +16,6 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ForkRightIcon from '@mui/icons-material/ForkRight';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintOutlined';
-import FormatPaintTwoToneIcon from '@mui/icons-material/FormatPaintTwoTone';
 import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -29,10 +28,9 @@ import StrikethroughSIcon from '@mui/icons-material/StrikethroughS';
 import TelegramIcon from '@mui/icons-material/Telegram';
 import TextureIcon from '@mui/icons-material/Texture';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
-import VisibilityIcon from '@mui/icons-material/VisibilityOff';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SettingsIcon from '@mui/icons-material/Settings';
-
 
 import { ModelVendorAnthropic } from '~/modules/llms/vendors/anthropic/anthropic.vendor';
 
@@ -156,8 +154,8 @@ export function ChatMessage(props: {
   onMessageDelete?: (messageId: string) => void,
   onMessageFragmentAppend?: (messageId: DMessageId, fragment: DMessageFragment) => void
   onMessageFragmentDelete?: (messageId: DMessageId, fragmentId: DMessageFragmentId) => void,
-  onMessageFragmentReplace?: (messageId: DMessageId, fragmentId: DMessageFragmentId, newFragment: DMessageFragment, isTemporary?:boolean) => void,
-  onMessageToggleUserFlag?: (messageId: string, userFlag: DMessageUserFlag, maxPerConversation?: number) => void,
+  onMessageFragmentReplace?: (messageId: DMessageId, fragmentId: DMessageFragmentId, newFragment: DMessageFragment) => void,
+  onMessageToggleUserFlag?: (messageId: string, flag: DMessageUserFlag, maxPerConversation?: number) => void,
   onMessageTruncate?: (messageId: string) => void,
   onTextDiagram?: (messageId: string, text: string) => Promise<void>,
   onTextImagine?: (text: string) => Promise<void>,
@@ -181,11 +179,9 @@ export function ChatMessage(props: {
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         inlineStyle: localStorage.getItem("inlineStyle") || "#0070F3",
         systemPrompt: localStorage.getItem("systemPrompt") || "Translate the following text from {sourceLang} to {targetLang}:\n{text}",
-        inlineMode: localStorage.getItem('inlineMode') === 'true' || false,
     });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
-
 
   // external state
   const { adjContentScaling, disableMarkdown, doubleClickToEdit, uiComplexityMode } = useUIPreferencesStore(useShallow(state => ({
@@ -218,7 +214,7 @@ export function ChatMessage(props: {
 
   const isUserMessageSkipped = messageHasUserFlag(props.message, MESSAGE_FLAG_AIX_SKIP);
   const isUserStarred = messageHasUserFlag(props.message, MESSAGE_FLAG_STARRED);
-    const isUserNotifyComplete = messageHasUserFlag(props.message, MESSAGE_FLAG_NOTIFY_COMPLETE);
+  const isUserNotifyComplete = messageHasUserFlag(props.message, MESSAGE_FLAG_NOTIFY_COMPLETE);
   const isVndAndCacheAuto = !!props.showAntPromptCaching && messageHasUserFlag(props.message, MESSAGE_FLAG_VND_ANT_CACHE_AUTO);
   const isVndAndCacheUser = !!props.showAntPromptCaching && messageHasUserFlag(props.message, MESSAGE_FLAG_VND_ANT_CACHE_USER);
 
@@ -337,13 +333,13 @@ export function ChatMessage(props: {
     onMessageToggleUserFlag?.(messageId, MESSAGE_FLAG_STARRED);
   }, [messageId, onMessageToggleUserFlag]);
 
-    const handleOpsToggleNotifyComplete = React.useCallback(() => {
+  const handleOpsToggleNotifyComplete = React.useCallback(() => {
     // also remember the preference, for auto-setting flags by the persona
     setIsNotificationEnabledForModel(messageId, !isUserNotifyComplete);
     onMessageToggleUserFlag?.(messageId, MESSAGE_FLAG_NOTIFY_COMPLETE);
   }, [isUserNotifyComplete, messageId, onMessageToggleUserFlag]);
 
-    const handleOpsAssistantFrom = async (e: React.MouseEvent) => {
+  const handleOpsAssistantFrom = async (e: React.MouseEvent) => {
     e.preventDefault();
     handleCloseOpsMenu();
     await props.onMessageAssistantFrom?.(messageId, fromAssistant ? -1 : 0);
@@ -355,14 +351,14 @@ export function ChatMessage(props: {
     await props.onMessageBeam?.(messageId);
   };
 
-    const handleOpsBranch = (e: React.MouseEvent) => {
+  const handleOpsBranch = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // to try to not steal the focus from the branched conversation
     props.onMessageBranch?.(messageId);
-      handleCloseOpsMenu();
+    handleCloseOpsMenu();
   };
 
-    const handleOpsToggleShowDiff = () => setShowDiff(!showDiff);
+  const handleOpsToggleShowDiff = () => setShowDiff(!showDiff);
 
   const handleOpsDiagram = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -374,7 +370,7 @@ export function ChatMessage(props: {
     }
   };
 
-   const handleOpsImagine = async (e: React.MouseEvent) => {
+  const handleOpsImagine = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (props.onTextImagine) {
       await props.onTextImagine(textSubject.trim());
@@ -384,7 +380,7 @@ export function ChatMessage(props: {
     }
   };
 
-   const handleOpsAddInReferenceTo = (e: React.MouseEvent) => {
+  const handleOpsAddInReferenceTo = (e: React.MouseEvent) => {
     e.preventDefault();
     if (onAddInReferenceTo && textSubject.trim().length >= BUBBLE_MIN_TEXT_LENGTH) {
       onAddInReferenceTo({ mrt: 'dmsg', mText: textSubject.trim(), mRole: messageRole /*, messageId*/ });
@@ -404,12 +400,12 @@ export function ChatMessage(props: {
     }
   };
 
-    const handleOpsTruncate = (_e: React.MouseEvent) => {
+  const handleOpsTruncate = (_e: React.MouseEvent) => {
     props.onMessageTruncate?.(messageId);
-      handleCloseOpsMenu();
+    handleCloseOpsMenu();
   };
 
-    const handleOpsDelete = React.useCallback(() => {
+  const handleOpsDelete = React.useCallback(() => {
     onMessageDelete?.(messageId);
   }, [messageId, onMessageDelete]);
 
@@ -526,7 +522,7 @@ export function ChatMessage(props: {
             return apiKeys[selectedIndex];
         }, [apiKeyIndex, translationSettings.apiKey]);
 
-   const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void, inlineMode: boolean) => {
+       const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
             if (!selectedKey) {
               alert('No API key set')
@@ -592,33 +588,18 @@ export function ChatMessage(props: {
         );
 
 
-
     const handleTranslateText = React.useCallback(() => {
         setTranslationInProgress(true);
         const textToTranslate = messageFragmentsReduceText(messageFragments);
-         translateText(textToTranslate, (translatedText) => {
+        translateText(textToTranslate, (translatedText) => {
           if (translatedText) {
-             const newFragment = createTextContentFragment(translatedText);
-              onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment);
-             }
-             setTranslationInProgress(false);
-             handleCloseOpsMenu();
-          }, false);
-    }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
-   
-  const handleTranslateTextInline = React.useCallback(() => {
-        setTranslationInProgress(true);
-        const textToTranslate = messageFragmentsReduceText(messageFragments);
-         translateText(textToTranslate, (translatedText) => {
-          if (translatedText) {
-              const newFragment = createTextContentFragment(translatedText);
-               onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment, true);
+               const newFragment = createTextContentFragment(translatedText);
+                onMessageFragmentReplace?.(messageId, contentOrVoidFragments[0].fId, newFragment );
             }
              setTranslationInProgress(false);
-             handleCloseOpsMenu();
-         }, true);
+            handleCloseOpsMenu();
+        });
     }, [contentOrVoidFragments, messageFragments, messageId, onMessageFragmentReplace, translateText, handleCloseOpsMenu]);
-
 
 
     const handleOpenTranslationSettings = React.useCallback(() => {
@@ -717,6 +698,7 @@ export function ChatMessage(props: {
 
 
   // avatar icon & label & tooltip
+
   const zenMode = uiComplexityMode === 'minimal';
 
   const showAvatarIcon = !props.hideAvatar && !zenMode;
@@ -976,14 +958,14 @@ export function ChatMessage(props: {
             )}
           </Box>
 
-            {/* Notify Complete */}
-            {messagePendingIncomplete && !!onMessageToggleUserFlag && <ListDivider />}
-            {messagePendingIncomplete && !!onMessageToggleUserFlag && (
-              <MenuItem onClick={handleOpsToggleNotifyComplete}>
-                  <ListItemDecorator>{isUserNotifyComplete ? <NotificationsActiveIcon /> : <NotificationsOutlinedIcon />}</ListItemDecorator>
-                Notify on reply
-              </MenuItem>
-           )}
+          {/* Notify Complete */}
+          {messagePendingIncomplete && !!onMessageToggleUserFlag && <ListDivider />}
+          {messagePendingIncomplete && !!onMessageToggleUserFlag && (
+            <MenuItem onClick={handleOpsToggleNotifyComplete}>
+              <ListItemDecorator>{isUserNotifyComplete ? <NotificationsActiveIcon /> : <NotificationsOutlinedIcon />}</ListItemDecorator>
+              Notify on reply
+            </MenuItem>
+          )}
 
           {/* Anthropic Breakpoint Toggle */}
           {!messagePendingIncomplete && <ListDivider />}
@@ -1018,18 +1000,18 @@ export function ChatMessage(props: {
               {!props.isBottom && <span style={{ opacity: 0.5 }}>from here</span>}
             </MenuItem>
           )}
-            {!!props.onMessageDelete && (
-              <MenuItem onClick={handleOpsDelete} disabled={false /*fromSystem*/}>
-                <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
-                  Delete
-                  <span style={{ opacity: 0.5 }}>message</span>
-              </MenuItem>
+          {!!props.onMessageDelete && (
+            <MenuItem onClick={handleOpsDelete} disabled={false /*fromSystem*/}>
+              <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
+              Delete
+              <span style={{ opacity: 0.5 }}>message</span>
+            </MenuItem>
           )}
           {!!props.onMessageTruncate && (
             <MenuItem onClick={handleOpsTruncate} disabled={props.isBottom}>
               <ListItemDecorator><VerticalAlignBottomIcon /></ListItemDecorator>
-                Truncate
-                <span style={{ opacity: 0.5 }}>after this</span>
+              Truncate
+              <span style={{ opacity: 0.5 }}>after this</span>
             </MenuItem>
           )}
           {/* Diagram / Draw / Speak */}
@@ -1052,29 +1034,29 @@ export function ChatMessage(props: {
               Speak
             </MenuItem>
           )}
-           {/* Diff Viewer */}
-            {!!props.diffPreviousText && <ListDivider />}
-            {!!props.diffPreviousText && (
+          {/* Diff Viewer */}
+          {!!props.diffPreviousText && <ListDivider />}
+          {!!props.diffPreviousText && (
             <MenuItem onClick={handleOpsToggleShowDiff}>
               <ListItemDecorator><DifferenceIcon /></ListItemDecorator>
-                Show difference
-                <Switch checked={showDiff} onChange={handleOpsToggleShowDiff} sx={{ ml: 'auto' }} />
-              </MenuItem>
-            )}
+              Show difference
+              <Switch checked={showDiff} onChange={handleOpsToggleShowDiff} sx={{ ml: 'auto' }} />
+            </MenuItem>
+          )}
           {/* Beam/Restart */}
           {(!!props.onMessageAssistantFrom || !!props.onMessageBeam) && <ListDivider />}
           {!!props.onMessageAssistantFrom && (
-              <MenuItem disabled={fromSystem} onClick={handleOpsAssistantFrom}>
+            <MenuItem disabled={fromSystem} onClick={handleOpsAssistantFrom}>
               <ListItemDecorator>{fromAssistant ? <ReplayIcon color='primary' /> : <TelegramIcon color='primary' />}</ListItemDecorator>
               {!fromAssistant
                 ? <>Restart <span style={{ opacity: 0.5 }}>from here</span></>
                 : !props.isBottom
                   ? <>Retry <span style={{ opacity: 0.5 }}>from here</span></>
-                : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Retry<KeyStroke variant='outlined' combo='Ctrl + Shift + Z' /></Box>}
+                  : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Retry<KeyStroke variant='outlined' combo='Ctrl + Shift + Z' /></Box>}
             </MenuItem>
           )}
-            {!!props.onMessageBeam && (
-              <MenuItem disabled={fromSystem} onClick={handleOpsBeamFrom}>
+          {!!props.onMessageBeam && (
+            <MenuItem disabled={fromSystem} onClick={handleOpsBeamFrom}>
               <ListItemDecorator>
                 <ChatBeamIcon color={fromSystem ? undefined : 'primary'} />
               </ListItemDecorator>
@@ -1088,12 +1070,8 @@ export function ChatMessage(props: {
             {/* Translation */}
             <ListDivider />
             <MenuItem onClick={handleTranslateText} disabled={translationInProgress}>
-                <ListItemDecorator><FormatPaintTwoToneIcon/></ListItemDecorator>
+                <ListItemDecorator><FormatPaintOutlined/></ListItemDecorator>
                 Translate {translationInProgress &&  <CircularProgress size='sm' />}
-              </MenuItem>
-             <MenuItem onClick={handleTranslateTextInline} disabled={translationInProgress}>
-                <ListItemDecorator><FormatPaintTwoToneIcon/></ListItemDecorator>
-                Translate Inline {translationInProgress &&  <CircularProgress size='sm' />}
               </MenuItem>
              <MenuItem onClick={handleOpenTranslationSettings}>
                 <ListItemDecorator><SettingsIcon /></ListItemDecorator>
@@ -1117,7 +1095,7 @@ export function ChatMessage(props: {
 
               <FormControl sx={{mb: 2}}>
                   <FormLabel>API Key (comma-separated):</FormLabel>
-                   <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px'}} />
+                  <Textarea name="apiKey" value={translationSettings.apiKey} onChange={handleTranslationSettingsChange} placeholder='Enter your API key(s)' sx={{ maxHeight: '100px', overflowY: 'auto', scrollbarWidth: 'thin', '&::-webkit-scrollbar': { display: 'block', width: '8px' } }} />
               </FormControl>
 
                <FormControl sx={{mb: 2}}>
@@ -1144,9 +1122,8 @@ export function ChatMessage(props: {
 
              <FormControl sx={{mb: 2}}>
                   <FormLabel>System Prompt:</FormLabel>
-                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px' }}/>
+                  <Textarea name="systemPrompt" value={translationSettings.systemPrompt} onChange={handleTranslationSettingsChange} placeholder='System Prompt' minRows={4} sx={{ maxHeight: '100px', overflowY: 'scroll', scrollbarWidth: 'thin','&::-webkit-scrollbar': { display: 'block', width: '8px' } }}/>
                 </FormControl>
-                
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
                   <Button onClick={handleCloseTranslationSettings}>Close</Button>
                 </Box>
@@ -1155,4 +1132,3 @@ export function ChatMessage(props: {
     </Box>
   );
 }
-
