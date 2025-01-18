@@ -172,15 +172,13 @@ export function ChatMessage(props: {
   const [opsMenuAnchor, setOpsMenuAnchor] = React.useState<HTMLElement | null>(null);
   const [textContentEditState, setTextContentEditState] = React.useState<ChatMessageTextPartEditState | null>(null);
    const [translationSettingsOpen, setTranslationSettingsOpen] = React.useState(false); // Состояние для модального окна настроек перевода
-   const [translationSettings, setTranslationSettings] = React.useState(() => {
-    return {
+   const [translationSettings, setTranslationSettings] = React.useState({
         apiKey: localStorage.getItem("apiKey") || "",
         languageModel: localStorage.getItem("languageModel") || "gemini-2.0-flash-exp",
         inlineLangSrc: localStorage.getItem("inlineLangSrc") || "English",
         inlineLangDst: localStorage.getItem("inlineLangDst") || "Russian",
         systemPrompt: localStorage.getItem("systemPrompt") || "Выдай ТОЛЬКО ПЕРЕВОД.\nTranslate the following text from {sourceLang} to {targetLang}:\n{text}",
-    };
-});
+    });
     const [apiKeyIndex, setApiKeyIndex] = React.useState(0);
     const [translationInProgress, setTranslationInProgress] = React.useState(false);
     const [originalMessage, setOriginalMessage] = React.useState<string | null>(null); // состояние для хранения оригинала
@@ -636,10 +634,13 @@ export function ChatMessage(props: {
       setTranslationSettingsOpen(false);
     }, []);
 
-     const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+ const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
-        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
-        localStorage.setItem(name, value)
+         setTranslationSettings(prevState => {
+             const newState = { ...prevState, [name]: value };
+             localStorage.setItem(name, value)
+             return newState;
+         });
        }, []);
 
 
