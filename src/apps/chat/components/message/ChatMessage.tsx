@@ -513,8 +513,8 @@ export function ChatMessage(props: {
   }, [closeBubble]);
 
 
-     const selectApiKey = React.useCallback(() => {
-         if (!translationSettings.apiKey) return null;
+    const selectApiKey = React.useCallback(() => {
+         if (!translationSettings || !translationSettings.apiKey) return null;
          const apiKeys = translationSettings.apiKey.split(',');
          if (apiKeys.length === 0) return null;
 
@@ -523,7 +523,7 @@ export function ChatMessage(props: {
 
          // Возвращаем ключ по случайному индексу
          return apiKeys[randomIndex];
-     }, [translationSettings.apiKey]);
+     }, [translationSettings]);
 
        const translateText = React.useCallback(async (text: string, callback: (translatedText: string | null) => void) => {
             const selectedKey = selectApiKey();
@@ -638,7 +638,7 @@ export function ChatMessage(props: {
         const { name, value } = event.target;
          setTranslationSettings(prevState => {
              const newState = { ...prevState, [name]: value };
-             localStorage.setItem(name, value)
+             localStorage.setItem(name, value);
              return newState;
          });
        }, []);
