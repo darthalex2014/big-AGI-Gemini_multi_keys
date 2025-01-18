@@ -622,6 +622,8 @@ export function ChatMessage(props: {
 
      const handleTranslationSettingsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = event.target;
+        setTranslationSettings(prevState => ({ ...prevState, [name]: value }));
+        localStorage.setItem(name, value)
        }, []);
 
 
@@ -1115,10 +1117,8 @@ export function ChatMessage(props: {
                       value={translationSettings.apiKey}
                       onChange={handleTranslationSettingsChange}
                       placeholder='Enter your API key(s)'
-                      minRows={3}
-                      sx={{
-                          lineHeight: '1.5rem',
-                      }}
+                      minRows={4}
+                      maxRows={4}
                   />
               </FormControl>
 
@@ -1146,9 +1146,7 @@ export function ChatMessage(props: {
                       onChange={handleTranslationSettingsChange}
                       placeholder='System Prompt'
                       minRows={4}
-                        sx={{
-                            lineHeight: '1.5rem',
-                        }}
+                      maxRows={4}
                       />
                 </FormControl>
                 <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
