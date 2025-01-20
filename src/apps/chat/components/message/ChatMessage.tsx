@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import TimeAgo from 'react-timeago';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SxProps } from '@mui/joy/styles/types';
 import {
   Box,
@@ -104,8 +104,7 @@ const useTranslationStore = create<TranslationSettings & {
     }),
     {
       name: 'translation-settings',
-      // Исправлено здесь: используем storage вместо getStorage
-      storage: localStorage,
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );
