@@ -335,10 +335,11 @@ const handleTranslateMessage = React.useCallback(async () => {
     setOriginalFragments([...messageFragments]);
     const translatedFragments = await Promise.all(
       messageFragments.map(async (fragment) => {
-        // Исправленная проверка типа фрагмента
+        // Явное приведение типа для текстовых фрагментов
         if ('text' in fragment) {
-          const translatedText = await translateText(fragment.text);
-          return { ...fragment, text: translatedText || fragment.text };
+          const textFragment = fragment as DMessageContentFragment;
+          const translatedText = await translateText(textFragment.text);
+          return { ...textFragment, text: translatedText || textFragment.text };
         }
         return fragment;
       })
