@@ -109,6 +109,11 @@ const useTranslationStore = create<TranslationSettings & {
   )
 );
 
+// Добавить здесь отсутствующий тип
+export type ChatMessageTextPartEditState = {
+  [fragmentId: DMessageFragmentId]: string;
+};
+
 // Константы стилей
 const ENABLE_CONTEXT_MENU = false;
 const ENABLE_BUBBLE = true;
