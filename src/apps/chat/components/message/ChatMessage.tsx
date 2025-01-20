@@ -104,7 +104,8 @@ const useTranslationStore = create<TranslationSettings & {
     }),
     {
       name: 'translation-settings',
-      getStorage: () => localStorage,
+      // Исправлено здесь: используем storage вместо getStorage
+      storage: localStorage,
     }
   )
 );
