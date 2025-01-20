@@ -329,24 +329,25 @@ export function ChatMessage(props: {
     return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
   }, [selectApiKey, systemPrompt, sourceLang, targetLang, languageModel]);
 
-  const handleTranslateMessage = React.useCallback(async () => {
-    setTranslationInProgress(true);
-    try {
-      setOriginalFragments([...messageFragments]);
-      const translatedFragments = await Promise.all(
-        messageFragments.map(async (fragment) => {
-          if (fragment.type === 'text') {
-            const translatedText = await translateText(fragment.text);
-            return { ...fragment, text: translatedText || fragment.text };
-          }
-          return fragment;
-        })
-      );
-      props.onMessageFragmentReplace?.(messageId, translatedFragments);
-    } finally {
-      setTranslationInProgress(false);
-    }
-  }, [messageFragments, translateText, messageId, props.onMessageFragmentReplace]);
+const handleTranslateMessage = React.useCallback(async () => {
+  setTranslationInProgress(true);
+  try {
+    setOriginalFragments([...messageFragments]);
+    const translatedFragments = await Promise.all(
+      messageFragments.map(async (fragment) => {
+        // Исправленная проверка типа фрагмента
+        if ('text' in fragment) {
+          const translatedText = await translateText(fragment.text);
+          return { ...fragment, text: translatedText || fragment.text };
+        }
+        return fragment;
+      })
+    );
+    props.onMessageFragmentReplace?.(messageId, translatedFragments);
+  } finally {
+    setTranslationInProgress(false);
+  }
+}, [messageFragments, translateText, messageId, props.onMessageFragmentReplace]);
 
   const handleRevertOriginal = React.useCallback(() => {
     if (originalFragments) {
