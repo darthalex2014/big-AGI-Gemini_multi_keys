@@ -191,9 +191,15 @@ export function AppChat() {
   const willMulticast = isComposerMulticast && isMultiConversationId;
   const disableNewButton = isFocusedChatEmpty && !isMultiPane;
 
+
   const handleOpenConversationInFocusedPane = React.useCallback((conversationId: DConversationId | null) => {
     conversationId && openConversationInFocusedPane(conversationId);
   }, [openConversationInFocusedPane]);
+
+    const handleOpenAppInNewPane = React.useCallback((appId: string) => {
+       openAppInNewPane(appId);
+    }, [openAppInNewPane]);
+  
 
   const handleOpenConversationInSplitPane = React.useCallback((conversationId: DConversationId | null) => {
     conversationId && openConversationInSplitPane(conversationId);
@@ -582,7 +588,13 @@ export function AppChat() {
 
   return <>
     <OptimaDrawerIn>{drawerContent}</OptimaDrawerIn>
-    <OptimaToolbarIn>{focusedBarContent}</OptimaToolbarIn>
+      <OptimaToolbarIn>
+          {focusedBarContent}
+          {/* Add the Manager button here */}
+          <Button size='sm' variant='plain' color='neutral' onClick={() => handleOpenAppInNewPane('manager')}>
+              Manager
+          </Button>
+      </OptimaToolbarIn>
 
     <PanelGroup
       direction={(isMobile || isTallScreen) ? 'vertical' : 'horizontal'}
