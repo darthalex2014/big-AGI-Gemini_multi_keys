@@ -54,6 +54,8 @@ import { usePanesManager } from './components/panes/usePanesManager';
 import type { ChatExecuteMode } from './execute-mode/execute-mode.types';
 
 import { _handleExecute } from './editors/_handleExecute';
+import { AppManager } from '../manager/AppManager';
+import { navItems } from '~/common/app.nav';
 
 
 // what to say when a chat is new and has no title
@@ -132,6 +134,7 @@ export function AppChat() {
     openConversationInSplitPane,
     removePane,
     setFocusedPaneIndex,
+    openAppInNewPane, // import this from the usePanesManager, for the new "manager"
   } = usePanesManager();
 
   const { paneUniqueConversationIds, paneHandlers, paneBeamStores } = React.useMemo(() => {
@@ -589,6 +592,7 @@ export function AppChat() {
       {chatPanes.map((pane, idx) => {
         const _paneIsFocused = idx === focusedPaneIndex;
         const _paneConversationId = pane.conversationId;
+        const _paneAppId = pane.appId; // check if it has a value before using it
         const _paneChatHandler = paneHandlers[idx] ?? null;
         const _paneIsIncognito = _paneChatHandler?.isIncognito() ?? false;
         const _paneBeamStoreApi = paneBeamStores[idx] ?? null;
@@ -647,41 +651,42 @@ export function AppChat() {
               sx={scrollToBottomSx}
             >
 
-              {!_paneBeamIsOpen && (
-                <ChatMessageList
-                  conversationId={_paneConversationId}
-                  conversationHandler={_paneChatHandler}
-                  capabilityHasT2I={capabilityHasT2I}
-                  chatLLMAntPromptCaching={chatLLM?.interfaces?.includes(LLM_IF_ANT_PromptCaching) ?? false}
-                  chatLLMContextTokens={chatLLM?.contextTokens ?? null}
-                  chatLLMSupportsImages={chatLLM?.interfaces?.includes(LLM_IF_OAI_Vision) ?? false}
-                  fitScreen={isMobile || isMultiPane}
-                  isMobile={isMobile}
-                  isMessageSelectionMode={isMessageSelectionMode}
-                  setIsMessageSelectionMode={setIsMessageSelectionMode}
-                  onConversationBranch={handleConversationBranch}
-                  onConversationExecuteHistory={handleConversationExecuteHistory}
-                  onConversationNew={handleConversationNewInFocusedPane}
-                  onTextDiagram={handleTextDiagram}
-                  onTextImagine={handleImagineFromText}
-                  onTextSpeak={handleTextSpeak}
-                  sx={chatMessageListSx}
-                />
-              )}
-
-              {_paneBeamIsOpen && (
-                <ChatBeamWrapper
-                  beamStore={_paneBeamStoreApi}
-                  isMobile={isMobile}
-                  inlineSx={chatBeamWrapperSx}
-                />
-              )}
-
-              {/* Visibility and actions are handled via Context */}
-              <ScrollToBottomButton />
-
-            </ScrollToBottom>
-
+                {_paneAppId === 'manager' ? ( // check _paneAppId instead of _paneConversationId
+                    <AppManager />
+                  ) : !_paneBeamIsOpen && (
+                    <ChatMessageList
+                        conversationId={_paneConversationId}
+                      conversationHandler={_paneChatHandler}
+                        capabilityHasT2I={capabilityHasT2I}
+                      chatLLMAntPromptCaching={chatLLM?.interfaces?.includes(LLM_IF_ANT_PromptCaching) ?? false}
+                      chatLLMContextTokens={chatLLM?.contextTokens ?? null}
+                      chatLLMSupportsImages={chatLLM?.interfaces?.includes(LLM_IF_OAI_Vision) ?? false}
+                      fitScreen={isMobile || isMultiPane}
+                      isMobile={isMobile}
+                        isMessageSelectionMode={isMessageSelectionMode}
+                      setIsMessageSelectionMode={setIsMessageSelectionMode}
+                        onConversationBranch={handleConversationBranch}
+                      onConversationExecuteHistory={handleConversationExecuteHistory}
+                        onConversationNew={handleConversationNewInFocusedPane}
+                      onTextDiagram={handleTextDiagram}
+                      onTextImagine={handleImagineFromText}
+                      onTextSpeak={handleTextSpeak}
+                        sx={chatMessageListSx}
+                    />
+                  )}
+                    
+                  {_paneBeamIsOpen && (
+                        <ChatBeamWrapper
+                            beamStore={_paneBeamStoreApi}
+                            isMobile={isMobile}
+                            inlineSx={chatBeamWrapperSx}
+                        />
+                    )}
+                                      
+                    {/* Visibility and actions are handled via Context */}
+                    <ScrollToBottomButton />
+                  
+                </ScrollToBottom>
           </Panel>
 
           {/* Panel Separators & Resizers */}
