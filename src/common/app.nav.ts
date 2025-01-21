@@ -29,6 +29,8 @@ import { DiscordIcon } from '~/common/components/icons/3rdparty/DiscordIcon';
 import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 
+// NEW ICON
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
 import { Brand } from '~/common/app.config';
 import { ChatBeamIcon } from '~/common/components/icons/ChatBeamIcon';
@@ -99,6 +101,13 @@ export const navItems: {
       type: 'app',
       route: '/',
     },
+    {
+      name: 'Manager',
+      icon: AssignmentIndIcon, // Using a generic user icon
+      type: 'app',
+      route: '/manager', // set a new route for the manager
+      hideDrawer: true,
+    },   
     {
       name: 'Call',
       barTitle: 'Voice Calls',
