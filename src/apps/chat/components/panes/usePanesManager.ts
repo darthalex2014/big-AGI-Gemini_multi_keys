@@ -23,6 +23,7 @@ interface ChatPane {
   paneId: string;
 
   conversationId: DConversationId | null;
+  appId?: string | null; // add this
 
   // other per-pane storage? or would this be cluttering the panes(view)-only abstaction?
   // ... we are currently creating companion ConversationHandler obects for this
@@ -42,6 +43,7 @@ interface AppChatPanesState {
 interface AppChatPanesStore extends AppChatPanesState {
 
   // actions
+  openAppInNewPane: (appId: string) => void; // add this for the manager
   openConversationInFocusedPane: (conversationId: DConversationId) => void;
   openConversationInSplitPane: (conversationId: DConversationId) => void;
   navigateHistoryInFocusedPane: (direction: 'back' | 'forward') => boolean;
@@ -53,10 +55,11 @@ interface AppChatPanesStore extends AppChatPanesState {
 
 }
 
-function createPane(conversationId: DConversationId | null = null): ChatPane {
+function createPane(conversationId: DConversationId | null = null, appId: string | null = null): ChatPane {
   return {
     paneId: agiUuid('chat-pane'),
     conversationId,
+    appId: appId, //add this
     history: conversationId ? [conversationId] : [],
     historyIndex: conversationId ? 0 : -1,
   };
@@ -65,6 +68,7 @@ function createPane(conversationId: DConversationId | null = null): ChatPane {
 function duplicatePane(pane: ChatPane): ChatPane {
   return {
     paneId: agiUuid('chat-pane'),
+    appId: pane.appId, //add this
     conversationId: pane.conversationId,
     history: [...pane.history],
     historyIndex: pane.historyIndex,
@@ -77,6 +81,46 @@ const useAppChatPanesStore = create<AppChatPanesStore>()(persist(
     // Initial state: no panes
     chatPanes: [] as ChatPane[],
     chatPaneFocusIndex: null as number | null,
+
+
+      openAppInNewPane: (appId: string) => {
+          _set((state) => {
+              // If there's no pane, create and focus a new one.
+            if (!state.chatPanes.length) {
+              const newPane = createPane(null, appId);
+              return {
+                chatPanes: [newPane],
+                chatPaneFocusIndex: 0,
+              };
+            }
+
+
+           // if fewer than the maximum panes, create a new pane and focus it
+          if (state.chatPanes.length < MAX_CONCURRENT_PANES) {
+             const insertIndex =  state.chatPaneFocusIndex !== null ? state.chatPaneFocusIndex + 1 : state.chatPanes.length;
+             return {
+                  chatPanes: [
+                      ...state.chatPanes.slice(0, insertIndex),
+                      createPane(null, appId),
+                      ...state.chatPanes.slice(insertIndex),
+                  ],
+                  chatPaneFocusIndex: insertIndex,
+              }
+          }
+
+         // max reached, replace the next pane (with wraparound) - note the outside logic won't get us here
+         const replaceIndex = (state.chatPaneFocusIndex !== null ? state.chatPaneFocusIndex + 1 : 0) % MAX_CONCURRENT_PANES;
+          return {
+                  chatPanes: [
+                      ...state.chatPanes.slice(0, replaceIndex),
+                      createPane(null, appId),
+                      ...state.chatPanes.slice(replaceIndex + 1),
+                  ],
+                chatPaneFocusIndex: replaceIndex,
+            }
+        });
+      },
+
 
     openConversationInFocusedPane: (conversationId: DConversationId) => {
       _set((state) => {
@@ -116,6 +160,7 @@ const useAppChatPanesStore = create<AppChatPanesStore>()(persist(
           conversationId,
           history: newHistory,
           historyIndex: newHistory.length - 1,
+          appId: null, // set to null as this pane holds conversation now
         };
 
         if (DEBUG_PANES_MANAGER)
@@ -185,6 +230,7 @@ const useAppChatPanesStore = create<AppChatPanesStore>()(persist(
         ...focusedPane,
         conversationId: focusedPane.history[newHistoryIndex],
         historyIndex: newHistoryIndex,
+        appId: null, // set to null as this pane holds conversation now
       };
 
       if (DEBUG_PANES_MANAGER)
@@ -304,8 +350,9 @@ const useAppChatPanesStore = create<AppChatPanesStore>()(persist(
             conversationId: nextConversationId,
             history: newHistory,
             historyIndex: newHistoryIndex,
+            appId: null, //set it to null since we have a conversation now
           };
-        }).filter(pane => !!pane.conversationId);
+        }).filter(pane => !!pane.conversationId || !!pane.appId);
 
         // if untouched, return state as-is
         if (untouched && newPanes.length >= 1)
@@ -336,6 +383,7 @@ export function usePanesManager() {
     focusedPaneIndex: state.chatPaneFocusIndex,
     focusedPaneConversationId: state.chatPaneFocusIndex !== null ? state.chatPanes[state.chatPaneFocusIndex]?.conversationId ?? null : null,
     // methods
+    openAppInNewPane: state.openAppInNewPane, // include the new function
     openConversationInFocusedPane: state.openConversationInFocusedPane,
     openConversationInSplitPane: state.openConversationInSplitPane,
     navigateHistoryInFocusedPane: state.navigateHistoryInFocusedPane,
